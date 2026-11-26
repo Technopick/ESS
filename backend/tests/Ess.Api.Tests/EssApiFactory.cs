@@ -20,6 +20,7 @@ public sealed class EssApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
     public const string AdminPassword = "Adm1n-Test-Passw0rd!";
     private readonly string _dbName = "ess_api_test_" + Guid.NewGuid().ToString("N")[..8];
     public CapturingEmailSender Emails { get; } = new();
+    public string StorageRoot { get; } = Path.Combine(Path.GetTempPath(), "ess-test-files-" + Guid.NewGuid().ToString("N")[..8]);
     public string ConnectionString => new NpgsqlConnectionStringBuilder(BaseCs) { Database = _dbName }.ConnectionString;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -41,6 +42,7 @@ public sealed class EssApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
             ["App:PublicUrl"] = "http://ess.test",
             ["RateLimiting:AuthPerMinute"] = "1000",
             ["RateLimiting:PerUserPerMinute"] = "10000",
+            ["Storage:RootPath"] = StorageRoot,
         })
             builder.UseSetting(k, v);
         builder.ConfigureServices(s =>
@@ -62,6 +64,7 @@ public sealed class EssApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
     async Task IAsyncLifetime.DisposeAsync()
     {
         await base.DisposeAsync();
+        if (Directory.Exists(StorageRoot)) Directory.Delete(StorageRoot, true);
         if (BaseCs is null) return;
         NpgsqlConnection.ClearAllPools();
         await using var conn = new NpgsqlConnection(BaseCs);

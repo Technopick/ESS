@@ -34,6 +34,8 @@ public static class DependencyInjection
         services.AddScoped<DatabaseSeeder>();
         services.AddScoped<Ess.Application.Notifications.INotificationService, Notifications.NotificationService>();
         services.AddScoped<Ess.Application.Workflow.IWorkflowEngine, Workflow.WorkflowEngine>();
+        services.AddSingleton<Ess.Application.Documents.IFileStorage, Storage.EncryptedFileStorage>();
+        services.AddSingleton<Ess.Application.Documents.IMalwareScanner, Storage.ClamAvScanner>();
         services.Configure<Email.SmtpOptions>(config.GetSection(Email.SmtpOptions.Section));
         services.AddSingleton<IEmailSender, Email.SmtpEmailSender>();
         return services;

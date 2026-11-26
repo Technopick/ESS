@@ -43,6 +43,9 @@ try
     builder.Services.AddScoped<Ess.Api.Services.LeaveBalanceService>();
     builder.Services.AddScoped<Ess.Api.Services.LeaveService>();
     builder.Services.AddScoped<Ess.Api.Services.PayrollService>();
+    builder.Services.AddScoped<Ess.Api.Services.DocumentService>();
+    builder.Services.AddScoped<Ess.Api.Services.ExpenseService>();
+    builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.ExpenseWorkflowHandler>();
     builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.LeaveWorkflowHandler>();
     builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.ProfileChangeWorkflowHandler>();
     builder.Services.AddSingleton<Microsoft.AspNetCore.SignalR.IUserIdProvider, Ess.Api.Hubs.SubUserIdProvider>();
@@ -193,6 +196,8 @@ try
         jobs.AddOrUpdate<NavSyncService>("nav-sync-full", s => s.SyncAllCompaniesAsync(true, "schedule", CancellationToken.None), config["NavIntegration:FullSyncCron"] ?? "30 1 * * *");
         jobs.AddOrUpdate<ReconciliationService>("nav-reconciliation", s => s.RunAsync(CancellationToken.None), "*/5 * * * *");
         jobs.AddOrUpdate<Ess.Application.Workflow.IWorkflowEngine>("workflow-deadlines", e => e.ProcessDeadlinesAsync(CancellationToken.None), "*/15 * * * *");
+        jobs.AddOrUpdate<Ess.Api.Services.DocumentService>("documents-expiry", s => s.NotifyExpiringAsync(CancellationToken.None), "0 6 * * *");
+        jobs.AddOrUpdate<Ess.Api.Services.ExpenseService>("expense-nav-status", s => s.MirrorNavStatusesAsync(CancellationToken.None), "*/30 * * * *");
         jobs.AddOrUpdate<Ess.Api.Services.LeaveService>("leave-nav-status", s => s.MirrorNavStatusesAsync(CancellationToken.None), "*/10 * * * *");
     }
 

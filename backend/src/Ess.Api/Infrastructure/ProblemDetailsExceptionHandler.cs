@@ -23,7 +23,7 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
             ValidationException => (StatusCodes.Status400BadRequest, "Validation failed"),
             UnauthorizedAccessException => (StatusCodes.Status403Forbidden, "Forbidden"),
             KeyNotFoundException => (StatusCodes.Status404NotFound, "Not found"),
-            Ess.Api.Services.NavUnavailableException => (StatusCodes.Status503ServiceUnavailable, "NAV is not available"),
+            Ess.Api.Services.ServiceUnavailableException => (StatusCodes.Status503ServiceUnavailable, "Temporarily unavailable"),
             Ess.Application.Workflow.WorkflowException => (StatusCodes.Status409Conflict, "This action is not possible right now"),
             Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "The record was changed by someone else. Reload and try again."),
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred")

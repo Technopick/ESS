@@ -156,7 +156,13 @@ public sealed class PayrollService
 }
 
 /// <summary>NAV could not answer and there is no fallback; shown to the user as a 503 with the message.</summary>
-public sealed class NavUnavailableException : Exception
+public sealed class NavUnavailableException : ServiceUnavailableException
 {
     public NavUnavailableException(string message) : base(message) { }
+}
+
+/// <summary>A dependency (NAV, virus scanner) is missing or down; shown as a 503 with the message.</summary>
+public class ServiceUnavailableException : Exception
+{
+    public ServiceUnavailableException(string message) : base(message) { }
 }
