@@ -1,0 +1,64 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D79D42BC-3B5A-4F15-8B2D-3BD5EC20A18F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ess.Api", "src\Ess.Api\Ess.Api.csproj", "{C675D63A-13F8-4A74-82D5-C512756FE458}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ess.Application", "src\Ess.Application\Ess.Application.csproj", "{7C3DBCBB-3981-4E0E-B799-4480B374A47E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ess.Domain", "src\Ess.Domain\Ess.Domain.csproj", "{6D716BC8-FB8D-4228-9DAA-B25D190C23C4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ess.Infrastructure", "src\Ess.Infrastructure\Ess.Infrastructure.csproj", "{F350DA18-B5C5-4710-B201-726F7E78BEAD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ess.Integration.Nav", "src\Ess.Integration.Nav\Ess.Integration.Nav.csproj", "{A248B640-C726-4E71-8799-597782437952}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D06AD838-A7AE-478D-AEF0-C3FA7E13453E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ess.UnitTests", "tests\Ess.UnitTests\Ess.UnitTests.csproj", "{01362D4B-DDF7-4136-8C16-6A6152557159}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C675D63A-13F8-4A74-82D5-C512756FE458}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C675D63A-13F8-4A74-82D5-C512756FE458}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C675D63A-13F8-4A74-82D5-C512756FE458}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C675D63A-13F8-4A74-82D5-C512756FE458}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C3DBCBB-3981-4E0E-B799-4480B374A47E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C3DBCBB-3981-4E0E-B799-4480B374A47E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C3DBCBB-3981-4E0E-B799-4480B374A47E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C3DBCBB-3981-4E0E-B799-4480B374A47E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6D716BC8-FB8D-4228-9DAA-B25D190C23C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6D716BC8-FB8D-4228-9DAA-B25D190C23C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6D716BC8-FB8D-4228-9DAA-B25D190C23C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6D716BC8-FB8D-4228-9DAA-B25D190C23C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F350DA18-B5C5-4710-B201-726F7E78BEAD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F350DA18-B5C5-4710-B201-726F7E78BEAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F350DA18-B5C5-4710-B201-726F7E78BEAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F350DA18-B5C5-4710-B201-726F7E78BEAD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A248B640-C726-4E71-8799-597782437952}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A248B640-C726-4E71-8799-597782437952}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A248B640-C726-4E71-8799-597782437952}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A248B640-C726-4E71-8799-597782437952}.Release|Any CPU.Build.0 = Release|Any CPU
+		{01362D4B-DDF7-4136-8C16-6A6152557159}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{01362D4B-DDF7-4136-8C16-6A6152557159}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{01362D4B-DDF7-4136-8C16-6A6152557159}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{01362D4B-DDF7-4136-8C16-6A6152557159}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C675D63A-13F8-4A74-82D5-C512756FE458} = {D79D42BC-3B5A-4F15-8B2D-3BD5EC20A18F}
+		{7C3DBCBB-3981-4E0E-B799-4480B374A47E} = {D79D42BC-3B5A-4F15-8B2D-3BD5EC20A18F}
+		{6D716BC8-FB8D-4228-9DAA-B25D190C23C4} = {D79D42BC-3B5A-4F15-8B2D-3BD5EC20A18F}
+		{F350DA18-B5C5-4710-B201-726F7E78BEAD} = {D79D42BC-3B5A-4F15-8B2D-3BD5EC20A18F}
+		{A248B640-C726-4E71-8799-597782437952} = {D79D42BC-3B5A-4F15-8B2D-3BD5EC20A18F}
+		{01362D4B-DDF7-4136-8C16-6A6152557159} = {D06AD838-A7AE-478D-AEF0-C3FA7E13453E}
+	EndGlobalSection
+EndGlobal

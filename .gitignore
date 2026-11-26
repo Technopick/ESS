@@ -1,0 +1,15 @@
+bin/
+obj/
+node_modules/
+dist/
+*.user
+.vs/
+.idea/
+logs/
+*.log
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+coverage/
+TestResults/
