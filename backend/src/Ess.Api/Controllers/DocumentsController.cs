@@ -53,7 +53,7 @@ public sealed class DocumentsController : ControllerBase
         var q = _db.EmployeeDocuments.AsNoTracking().Where(d => d.CompanyId == CompanyId && d.OwnerEntityType == null
             && ((me != null && d.EmployeeId == me.Id) || d.Visibility == DocumentVisibility.Company
                 || (d.Visibility == DocumentVisibility.Department && me != null && d.DepartmentId == me.DepartmentId)));
-        return await _docs.Views(q, me?.Id, false).OrderBy(v => v.Category).ThenBy(v => v.Title).ToListAsync(ct);
+        return (await _docs.Views(q, me?.Id, false).ToListAsync(ct)).OrderBy(v => v.Category).ThenBy(v => v.Title).ToList();
     }
 
     /// <summary>HR: documents of one employee, or company/department documents when no employee is given.</summary>
@@ -75,7 +75,7 @@ public sealed class DocumentsController : ControllerBase
             q = q.Where(d => d.EmployeeId == null
                 ? d.DepartmentId != null && scope.Contains(d.DepartmentId.Value)
                 : _db.Employees.Any(e => e.Id == d.EmployeeId && e.DepartmentId != null && scope.Contains(e.DepartmentId.Value)));
-        return await PagedResult<DocumentView>.CreateAsync(_docs.Views(q, null, true).OrderBy(v => v.ExpiryDate ?? DateOnly.MaxValue).ThenBy(v => v.Title), page, pageSize, ct);
+        return await PagedResult<DocumentView>.CreateAsync(_docs.Views(q.OrderBy(d => d.ExpiryDate == null).ThenBy(d => d.ExpiryDate).ThenBy(d => d.Title), null, true), page, pageSize, ct);
     }
 
     public sealed class UploadForm

@@ -58,6 +58,8 @@ public sealed class Phase3ExpenseDocumentTests : ApiTestBase
         stored.Should().NotContain(b => Encoding.ASCII.GetString(b).Contains("SECRET-RECEIPT-CONTENT"), "files are encrypted at rest");
         (await WithDbAsync(db => db.DocumentAccessLogs.AnyAsync(l => l.DocumentId == doc.GetProperty("id").GetGuid() && l.Action == "download"))).Should().BeTrue();
 
+        (await baraka.GetFromJsonAsync<List<JsonElement>>("/api/documents/mine", Json))!.Should().Contain(d => d.GetProperty("id").GetGuid() == doc.GetProperty("id").GetGuid());
+
         // A new version keeps history.
         (await baraka.PostAsync($"/api/documents/{doc.GetProperty("id")}/versions", Form(Png, "id-scan.png"))).StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await (await baraka.GetAsync($"/api/documents/{doc.GetProperty("id")}/download?version=1")).Content.ReadAsByteArrayAsync()).Should().Equal(Pdf);
@@ -127,6 +129,9 @@ public sealed class Phase3ExpenseDocumentTests : ApiTestBase
         final.GetProperty("status").GetString().Should().Be("Approved");
         final.GetProperty("navStatus").GetString().Should().Be("Posted");
         final.GetProperty("navDocumentNo").GetString().Should().StartWith("SIM-EC");
+
+        (await baraka.GetFromJsonAsync<JsonElement>("/api/expenses/mine", Json)).GetProperty("items").GetArrayLength().Should().BeGreaterThan(0);
+        (await finance.GetFromJsonAsync<JsonElement>("/api/expenses", Json)).GetProperty("items").EnumerateArray().Should().Contain(c => c.GetProperty("id").GetGuid() == claimId);
 
         // A second claim with the same expense is flagged as a possible duplicate.
         var dup = await baraka.PostAsJsonAsync("/api/expenses", new

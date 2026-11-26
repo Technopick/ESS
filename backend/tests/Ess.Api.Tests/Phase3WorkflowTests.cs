@@ -93,6 +93,9 @@ public sealed class Phase3WorkflowTests : ApiTestBase
         leave.GetProperty("navStatus").GetString().Should().Be("Posted");
         leave.GetProperty("navDocumentNo").GetString().Should().StartWith("SIM-LV");
 
+        (await baraka.GetFromJsonAsync<JsonElement>("/api/leave/mine", Json)).GetProperty("items").EnumerateArray().Should().Contain(l => l.GetProperty("id").GetGuid() == leaveId);
+        var calendar = await daudi.GetFromJsonAsync<List<JsonElement>>($"/api/leave/calendar?from={week.Start:yyyy-MM-dd}&to={week.End:yyyy-MM-dd}", Json);
+        calendar!.Should().Contain(c => c.GetProperty("employeeName").GetString() == "Baraka Otieno");
         var notes = await baraka.GetFromJsonAsync<JsonElement>("/api/notifications", Json);
         notes.GetProperty("items").EnumerateArray().Select(n => n.GetProperty("eventCode").GetString()).Should().Contain(new[] { "request.approved", "nav.posted" });
     }

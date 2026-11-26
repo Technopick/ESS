@@ -90,8 +90,8 @@ public sealed class LeaveController : ControllerBase
     public async Task<PagedResult<LeaveView>> Mine([FromQuery] int? year, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken ct = default)
     {
         var e = await _me.RequireAsync(ct);
-        var q = Views(_db.LeaveApplications.AsNoTracking().Where(a => a.EmployeeId == e.Id && (year == null || a.StartDate.Year == year)));
-        return await PagedResult<LeaveView>.CreateAsync(q.OrderByDescending(v => v.StartDate), page, pageSize, ct);
+        var q = Views(_db.LeaveApplications.AsNoTracking().Where(a => a.EmployeeId == e.Id && (year == null || a.StartDate.Year == year)).OrderByDescending(a => a.StartDate));
+        return await PagedResult<LeaveView>.CreateAsync(q, page, pageSize, ct);
     }
 
     /// <summary>One application: the employee's own, or one the caller may see as approver, manager or HR.</summary>

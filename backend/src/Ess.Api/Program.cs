@@ -46,6 +46,9 @@ try
     builder.Services.AddScoped<Ess.Api.Services.DocumentService>();
     builder.Services.AddScoped<Ess.Api.Services.ExpenseService>();
     builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.ExpenseWorkflowHandler>();
+    builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.HrRequestWorkflowHandler>();
+    builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.AttendanceWorkflowHandler>();
+    builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.TrainingWorkflowHandler>();
     builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.LeaveWorkflowHandler>();
     builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.ProfileChangeWorkflowHandler>();
     builder.Services.AddSingleton<Microsoft.AspNetCore.SignalR.IUserIdProvider, Ess.Api.Hubs.SubUserIdProvider>();
