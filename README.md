@@ -1,12 +1,12 @@
 # Employee Self-Service portal for Dynamics NAV / Business Central
 
-Enterprise ESS portal that keeps Dynamics NAV/BC as the system of record. Built in phases; Phases 1 and 2 are done.
+Enterprise ESS portal that keeps Dynamics NAV/BC as the system of record. Built in phases; Phases 1, 2 and 3 are done.
 
 * Architecture: [docs/architecture.md](docs/architecture.md)
 * NAV integration mapping and discovery checklist: [docs/nav-integration-mapping.md](docs/nav-integration-mapping.md)
 * NAV customisations required: [docs/nav-customizations.md](docs/nav-customizations.md)
 
-## What works today (Phases 1 and 2)
+## What works today (Phases 1 to 3)
 
 * ASP.NET Core 8 API with Serilog, API versioning, Swagger, ProblemDetails errors, health checks, rate limiting, security headers, SignalR hub, Hangfire.
 * PostgreSQL schema for all spec §10 entities (EF Core migration `InitialSchema`), soft delete, UTC audit stamps, partial unique indexes.
@@ -16,9 +16,15 @@ Enterprise ESS portal that keeps Dynamics NAV/BC as the system of record. Built 
 * Phase 2 accounts and security: TOTP MFA (QR enrolment, recovery codes, replay protection), MFA required by role, forgot and reset password, invitation links, change password, rate-limited auth endpoints.
 * Phase 2 administration: users (create, invite, roles with department scope, link to a NAV employee, disable, unlock, reset MFA, bulk-create accounts from NAV employees) and roles (custom roles with a permission editor).
 * Phase 2 employee pages: dashboard (leave balances, pending requests, celebrations with privacy settings), My profile from NAV with change requests (bank and ID details encrypted at rest), and a staff directory that shows limited fields unless the user may see all employees.
-* Tests: 53 backend tests (unit, end-to-end against PostgreSQL and the NAV simulator, and API tests), 4 frontend tests.
+* Phase 3 workflow engine: configurable approval routes per request type (line manager, head of department, manager's manager, role, named person), sequential and parallel steps, amount thresholds, delegation, deadlines with reminders and escalation, append-only history, versioned routes, and a "NAV owns the approval" option. Nobody can approve their own request. Profile change requests now go through it.
+* Phase 3 leave: balances from NAV, live validation (notice, overlap, half days, non-working days, balance), apply, correct after return, cancel, team calendar that hides leave types from peers, and posting to NAV only after approval with status mirrored back.
+* Phase 3 payslips: published periods only, payslip view and print, NAV PDF when available, yearly statutory summary (PAYE, NSSF, SHIF, Housing Levy), encrypted fallback copy, audited HR access with a reason, and HR publishing of closed NAV periods.
+* Phase 3 expenses and documents: multi-line claims with receipts, policy checks, approval by amount, posting to NAV as a claim for finance; encrypted document storage with content checks, optional ClamAV scan, versions, expiry reminders and an access log.
+* Phase 3 HR requests, attendance and training: request types with their own form fields and SLA, HR queue; clock in and out with optional location, corrections and overtime through approval, team view; training catalogue, applications, participants and feedback.
+* Notifications: in-app (live through SignalR) and email, with a bell in the header.
+* Tests: 66 backend tests (unit, end-to-end against PostgreSQL and the NAV simulator, and API tests), 7 frontend tests.
 
-Business modules (leave, payroll, expenses, requests, documents, attendance, training) and the workflow engine are Phase 3. HR approval of profile change requests arrives with the workflow engine.
+Known gaps: overtime and HR requests are not yet sent to NAV, biometric clock import is not built, and the payslip PDF needs NAV's report (otherwise the browser's print is used). These depend on the customer's NAV objects.
 
 ## Run locally
 

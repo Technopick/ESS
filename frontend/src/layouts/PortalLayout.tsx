@@ -15,8 +15,19 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
+import BeachAccessOutlinedIcon from '@mui/icons-material/BeachAccessOutlined'
+import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
+import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined'
+import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined'
+import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined'
+import AccessTimeOutlinedIcon from '@mui/icons-material/AccessTimeOutlined'
+import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
+import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined'
+import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
+import PublishOutlinedIcon from '@mui/icons-material/PublishOutlined'
 import { Permissions, useAuth } from '../auth/AuthContext'
 import { useThemeMode } from '../theme/AppThemeProvider'
+import { NotificationBell } from '../components/NotificationBell'
 
 const drawerWidth = 260
 
@@ -34,8 +45,28 @@ const sections: { title: string; items: NavItem[] }[] = [
     items: [
       { to: '/', label: 'Home', icon: <HomeOutlinedIcon /> },
       { to: '/profile', label: 'My profile', icon: <BadgeOutlinedIcon />, permission: Permissions.ProfileViewOwn },
+      { to: '/leave', label: 'Leave', icon: <BeachAccessOutlinedIcon />, permission: Permissions.LeaveViewOwn },
+      { to: '/payslips', label: 'Payslips', icon: <ReceiptLongOutlinedIcon />, permission: Permissions.PayrollViewOwn },
+      { to: '/expenses', label: 'Expense claims', icon: <PaymentsOutlinedIcon />, permission: Permissions.ExpenseSubmit },
+      { to: '/attendance', label: 'Attendance', icon: <AccessTimeOutlinedIcon />, permission: Permissions.AttendanceClock },
+      { to: '/training', label: 'Training', icon: <SchoolOutlinedIcon />, permission: Permissions.TrainingApply },
+      { to: '/requests', label: 'HR requests', icon: <SupportAgentOutlinedIcon />, permission: Permissions.RequestsSubmit },
+      { to: '/documents', label: 'Documents', icon: <FolderOutlinedIcon />, permission: Permissions.DocumentsViewOwn },
       { to: '/directory', label: 'Directory', icon: <GroupsOutlinedIcon />, permission: Permissions.EmployeesViewDirectory },
       { to: '/account/security', label: 'Sign-in and security', icon: <LockOutlinedIcon /> },
+    ],
+  },
+  {
+    title: 'Approvals',
+    items: [
+      { to: '/approvals', label: 'Approvals', icon: <TaskAltOutlinedIcon />, permission: Permissions.ApprovalsAct },
+    ],
+  },
+  {
+    title: 'HR administration',
+    items: [
+      { to: '/admin/payroll', label: 'Publish payslips', icon: <PublishOutlinedIcon />, permission: Permissions.PayrollPublish },
+      { to: '/admin/workflows', label: 'Approval routes', icon: <AccountTreeOutlinedIcon />, permission: Permissions.WorkflowConfigure },
     ],
   },
   {
@@ -95,6 +126,7 @@ export function PortalLayout() {
             </IconButton>
           )}
           <Box className="flex-1" />
+          <NotificationBell />
           <Tooltip title={dark ? 'Switch to light mode' : 'Switch to dark mode'}>
             <IconButton aria-label="Toggle colour mode" onClick={() => setMode(dark ? 'light' : 'dark')}>
               {dark ? <LightModeOutlinedIcon /> : <DarkModeOutlinedIcon />}

@@ -154,9 +154,9 @@ This avoids two competing approval processes. The owner per document type is dec
 |---|---|---|
 | 1 | Architecture, NAV discovery design, mapping, solution scaffold | Done except discovery on the real NAV, which needs NAV access |
 | 2 | Auth (MFA, Entra ID), roles admin, employee dashboard, profile sync | Done, except Entra ID sign-in (needs the tenant details) |
-| 3 | Leave, payroll, expenses, requests, documents, attendance, training | Next |
+| 3 | Leave, payroll, expenses, requests, documents, attendance, training, workflow engine | Done against the NAV simulator; NAV adapters for overtime and HR requests wait for the customer's objects |
 | 4 | Remaining NAV adapters against the real NAV, approval status sync | Engine done; adapters need the customer's objects |
-| 5 | HR portal, management dashboard, reports, notifications | Integration dashboard done |
+| 5 | HR portal, management dashboard, reports, notifications | Integration dashboard and notifications done; next |
 | 6 | Security, performance and UAT testing | Not started |
 | 7 | Production deployment package | Docker files only |
 
