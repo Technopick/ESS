@@ -44,7 +44,7 @@ try
     builder.Services.AddNavIntegrationEngine(config, env, runWorker: isWorkerNode);
 
     // ---------- API ----------
-    builder.Services.AddControllers();
+    builder.Services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
     builder.Services.AddProblemDetails();
     builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
     builder.Services.AddApiVersioning(o =>
