@@ -16,74 +16,11 @@ namespace Ess.Api.Tests;
 
 /// <summary>Phase 3 acceptance tests: approval engine with leave and profile changes, end to end to the NAV simulator.</summary>
 [Collection("api")]
-public sealed class Phase3WorkflowTests
+public sealed class Phase3WorkflowTests : ApiTestBase
 {
-    private const string Password = "Empl0yee-Passw0rd!";
-    private const string Baraka = "baraka.otieno@example.invalid";   // reports to Daudi
-    private const string Daudi = "daudi.mwangi@example.invalid";     // Finance Manager, no manager
-    private const string Chebet = "chebet.kiprono@example.invalid";  // reports to Amani
-    private const string Amani = "amani.wanjiru@example.invalid";    // HR Manager
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    private readonly EssApiFactory _f;
-
-    public Phase3WorkflowTests(EssApiFactory f) => _f = f;
+    public Phase3WorkflowTests(EssApiFactory f) : base(f) { }
 
     // ---------------------------------------------------------------- helpers
-
-    private async Task<Guid> SimCompanyAsync()
-    {
-        using var scope = _f.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<EssDbContext>();
-        var id = await db.Companies.Where(c => c.Code == "SIM").Select(c => c.Id).SingleAsync();
-        if (!await db.Employees.AnyAsync(e => e.CompanyId == id))
-            await _f.Services.GetRequiredService<NavSyncService>().SyncCompanyAsync(id, true, "test", default);
-        return id;
-    }
-
-    private async Task<HttpClient> UserAsync(string email)
-    {
-        var company = await SimCompanyAsync();
-        using (var scope = _f.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<EssDbContext>();
-            var u = await db.Users.FirstOrDefaultAsync(x => x.NormalizedEmail == email.ToUpperInvariant());
-            if (u?.PasswordHash is not null)
-            {
-                // Other test classes share these users (lockout and MFA tests); reset that state.
-                u.LockoutEndUtc = null;
-                u.AccessFailedCount = 0;
-                u.MfaEnabled = false;
-                u.MfaSecretEncrypted = null;
-                await db.SaveChangesAsync();
-                return await _f.SignInAsync(email, Password);
-            }
-        }
-        var admin = await _f.SignInAsync(EssApiFactory.AdminUser, EssApiFactory.AdminPassword);
-        (await admin.PostAsJsonAsync("/api/admin/users/provision", new { companyId = company, sendInvites = true })).EnsureSuccessStatusCode();
-        var token = _f.Emails.LastTokenFor(email);
-        token.Should().NotBeNull();
-        (await _f.Anonymous().PostAsJsonAsync("/api/auth/reset-password", new { token, newPassword = Password })).EnsureSuccessStatusCode();
-        return await _f.SignInAsync(email, Password);
-    }
-
-    private async Task GrantRoleAsync(string email, string role)
-    {
-        using var scope = _f.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<EssDbContext>();
-        var u = await db.Users.SingleAsync(x => x.NormalizedEmail == email.ToUpperInvariant());
-        var r = await db.Roles.SingleAsync(x => x.Name == role);
-        if (!await db.UserRoles.AnyAsync(x => x.UserId == u.Id && x.RoleId == r.Id))
-        {
-            db.UserRoles.Add(new UserRole { UserId = u.Id, RoleId = r.Id });
-            await db.SaveChangesAsync();
-        }
-    }
-
-    private async Task<T> WithDbAsync<T>(Func<EssDbContext, Task<T>> f)
-    {
-        using var scope = _f.Services.CreateScope();
-        return await f(scope.ServiceProvider.GetRequiredService<EssDbContext>());
-    }
 
     private async Task<Guid> AnnualLeaveTypeAsync(HttpClient c)
     {

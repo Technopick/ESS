@@ -42,6 +42,7 @@ try
     builder.Services.AddScoped<Ess.Api.Services.EmployeeContext>();
     builder.Services.AddScoped<Ess.Api.Services.LeaveBalanceService>();
     builder.Services.AddScoped<Ess.Api.Services.LeaveService>();
+    builder.Services.AddScoped<Ess.Api.Services.PayrollService>();
     builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.LeaveWorkflowHandler>();
     builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.ProfileChangeWorkflowHandler>();
     builder.Services.AddSingleton<Microsoft.AspNetCore.SignalR.IUserIdProvider, Ess.Api.Hubs.SubUserIdProvider>();

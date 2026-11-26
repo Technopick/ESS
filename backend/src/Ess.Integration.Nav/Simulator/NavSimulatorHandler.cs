@@ -70,6 +70,8 @@ public sealed class NavSimulatorHandler : HttpMessageHandler
                     new Dictionary<string, object?> { ["Code"] = "2026-10", ["Name"] = "October 2026", ["Starting_Date"] = "2026-10-01", ["Ending_Date"] = "2026-10-31", ["Pay_Date"] = "2026-10-28", ["Closed"] = true },
                     new Dictionary<string, object?> { ["Code"] = "2026-11", ["Name"] = "November 2026", ["Starting_Date"] = "2026-11-01", ["Ending_Date"] = "2026-11-30", ["Pay_Date"] = "2026-11-27", ["Closed"] = false }
                 },
+                "ESSPayslipHeaders" => SimulatedPayroll.Headers(Employees.Cast<Dictionary<string, object?>>().Select(e => (string)e["No"]!)),
+                "ESSPayslipLines" => SimulatedPayroll.Lines(Employees.Cast<Dictionary<string, object?>>().Select(e => (string)e["No"]!)),
                 _ => throw new InvalidOperationException($"Simulator has no entity set '{service}'.")
             };
             rows = ApplyEqFilters(rows, query);
