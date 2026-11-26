@@ -1,6 +1,6 @@
 # ESS Portal: system architecture
 
-Status: Phase 1 deliverable (architecture and NAV discovery). Version 0.1, 26 November 2026.
+Status: updated after Phase 2 (accounts, administration, employee pages). Version 0.2, 26 November 2026.
 
 ## 1. Purpose and ground rules
 
@@ -123,7 +123,7 @@ This avoids two competing approval processes. The owner per document type is dec
 
 ## 8. Security
 
-* **Authentication**: user name or email + password (ASP.NET Core Identity PBKDF2 hasher), lockout after 5 failures for 15 minutes, 15-minute JWT access token kept in memory, 7-day rotating refresh token in an HttpOnly SameSite=Strict cookie stored hashed, with token-family revocation on reuse. TOTP MFA and Microsoft Entra ID sign-in are Phase 2.
+* **Authentication**: user name or email + password (ASP.NET Core Identity PBKDF2 hasher), lockout after 5 failures for 15 minutes, 15-minute JWT access token kept in memory, 7-day rotating refresh token in an HttpOnly SameSite=Strict cookie stored hashed, with token-family revocation on reuse. TOTP MFA (with recovery codes and required by role) is done; Microsoft Entra ID sign-in is planned once the customer confirms the tenant.
 * **Authorisation**: deny by default. Ten system roles mapped to ~40 granular permissions (`Ess.Application/Security/Permissions.cs`); policies `perm:<code>`. HR roles can be scoped to a company and department.
 * **Employee data isolation**: "my" data is always resolved from the token's employee claim, never from request parameters. The payroll adapter additionally verifies that NAV returned the requested employee's rows only.
 * **Self-approval**: workflow steps skip or reassign when the approver is the requester (`skip_if_approver_is_requester`).
@@ -153,8 +153,8 @@ This avoids two competing approval processes. The owner per document type is dec
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Architecture, NAV discovery design, mapping, solution scaffold | Done except discovery on the real NAV, which needs NAV access |
-| 2 | Auth (MFA, Entra ID), roles admin, employee dashboard, profile sync | Sign-in, refresh, logout and lockout done early; rest next |
-| 3 | Leave, payroll, expenses, requests, documents, attendance, training | Not started |
+| 2 | Auth (MFA, Entra ID), roles admin, employee dashboard, profile sync | Done, except Entra ID sign-in (needs the tenant details) |
+| 3 | Leave, payroll, expenses, requests, documents, attendance, training | Next |
 | 4 | Remaining NAV adapters against the real NAV, approval status sync | Engine done; adapters need the customer's objects |
 | 5 | HR portal, management dashboard, reports, notifications | Integration dashboard done |
 | 6 | Security, performance and UAT testing | Not started |

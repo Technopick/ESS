@@ -16,6 +16,13 @@ namespace Ess.Api.Auth;
 /// </summary>
 public sealed class TokenService
 {
+    /// <summary>Present ("required") when the user's role demands MFA and it is not set up: only account endpoints are allowed.</summary>
+    public const string MfaEnrolClaim = "mfa_enrol";
+    /// <summary>"true" when one of the user's roles requires MFA (so it cannot be turned off).</summary>
+    public const string MfaRequiredRoleClaim = "mfa_role";
+    /// <summary>Present ("required") when an administrator set a temporary password.</summary>
+    public const string PasswordChangeClaim = "pwd_change";
+
     private readonly EssDbContext _db;
     private readonly IConfiguration _config;
     private readonly IWebHostEnvironment _env;
@@ -50,6 +57,15 @@ public sealed class TokenService
         if (companyId is not null) claims.Add(new(HttpCurrentUser.CompanyClaim, companyId.Value.ToString()));
         if (employeeId is not null) claims.Add(new(HttpCurrentUser.EmployeeClaim, employeeId.Value.ToString()));
         claims.AddRange(roles.Select(r => new Claim("role", r)));
+        var mfaRoles = _config.GetValue("Security:EnforceRoleMfa", true)
+            ? _config.GetSection("Security:RequireMfaForRoles").Get<string[]>() ?? Array.Empty<string>()
+            : Array.Empty<string>();
+        if (roles.Any(r => mfaRoles.Contains(r, StringComparer.OrdinalIgnoreCase)))
+        {
+            claims.Add(new(MfaRequiredRoleClaim, "true"));
+            if (!user.MfaEnabled) claims.Add(new(MfaEnrolClaim, "required"));
+        }
+        if (user.MustChangePassword) claims.Add(new(PasswordChangeClaim, "required"));
         claims.AddRange(perms.Select(p => new Claim(HttpCurrentUser.PermissionClaim, p)));
 
         var accessExpires = now.AddMinutes(_config.GetValue("Jwt:AccessTokenMinutes", 15));

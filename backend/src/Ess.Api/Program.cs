@@ -38,6 +38,9 @@ try
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
     builder.Services.AddScoped<Ess.Api.Auth.TokenService>();
+    builder.Services.AddScoped<Ess.Api.Auth.PasswordResetService>();
+    builder.Services.AddScoped<Ess.Api.Services.EmployeeContext>();
+    builder.Services.AddScoped<Ess.Api.Services.LeaveBalanceService>();
     builder.Services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<Ess.Domain.Identity.User>, Microsoft.AspNetCore.Identity.PasswordHasher<Ess.Domain.Identity.User>>();
     builder.Services.AddEssInfrastructure(config);
     var isWorkerNode = config.GetValue("Hosting:RunBackgroundWorkers", true);
@@ -108,10 +111,10 @@ try
     {
         o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
         o.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = config.GetValue("RateLimiting:AuthPerMinute", 10), Window = TimeSpan.FromMinutes(1) }));
         o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx => RateLimitPartition.GetFixedWindowLimiter(
             ctx.User.Identity?.Name ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = 300, Window = TimeSpan.FromMinutes(1) }));
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = config.GetValue("RateLimiting:PerUserPerMinute", 300), Window = TimeSpan.FromMinutes(1) }));
     });
     builder.Services.AddCors(o => o.AddPolicy("frontend", p => p
         .WithOrigins(config.GetSection("Cors:Origins").Get<string[]>() ?? Array.Empty<string>())
@@ -166,6 +169,7 @@ try
     app.UseCors("frontend");
     app.UseAuthentication();
     app.UseRateLimiter();
+    app.UseMiddleware<Ess.Api.Auth.AccountGateMiddleware>();
     app.UseAuthorization();
 
     app.MapControllers();

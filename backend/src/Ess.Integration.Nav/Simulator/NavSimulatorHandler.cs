@@ -113,6 +113,19 @@ public sealed class NavSimulatorHandler : HttpMessageHandler
             case "GetLeaveStatus":
                 result = "Open";
                 break;
+            case "GetEmployeeProfile":
+                if (!Employees.Cast<Dictionary<string, object?>>().Any(e => (string)e["No"]! == P("employeeNo"))) return Fault($"Employee {P("employeeNo")} does not exist.");
+                result = JsonSerializer.Serialize(new
+                {
+                    personal = new { maritalStatus = "Single", nationalId = "SIM-ID-" + P("employeeNo"), kraPin = "SIM-PIN" },
+                    address = new { address = "Simulated Road 1", city = "Nairobi", county = "Nairobi", postCode = "00100" },
+                    emergencyContacts = new[] { new { name = "Simulated Contact", relationship = "Sibling", phone = "+254700000000" } },
+                    nextOfKin = new[] { new { name = "Simulated Kin", relationship = "Parent", phone = "+254700000001", percentage = "100" } },
+                    dependants = Array.Empty<object>(),
+                    qualifications = new[] { new { code = "BCOM", description = "Bachelor of Commerce", institution = "Simulated University", from = "2012-09-01", to = "2016-07-31", expires = "" } },
+                    bank = new { bankName = "Simulated Bank", branch = "CBD", accountNo = "0123456789012" }
+                });
+                break;
             default:
                 return Fault($"The method {method} does not exist on codeunit {service}.");
         }

@@ -14,6 +14,12 @@ public class User : AuditableEntity
     public bool MfaEnabled { get; set; }
     /// <summary>TOTP secret, encrypted at rest by the infrastructure layer.</summary>
     public string? MfaSecretEncrypted { get; set; }
+    /// <summary>SHA-256 hashes of unused one-time recovery codes, separated by ';'.</summary>
+    public string? MfaRecoveryCodeHashes { get; set; }
+    /// <summary>Last accepted TOTP time step, to block replay of the same code.</summary>
+    public long? MfaLastTimeStep { get; set; }
+    public bool MustChangePassword { get; set; }
+    public DateTime? PasswordChangedAtUtc { get; set; }
     public int AccessFailedCount { get; set; }
     public DateTime? LockoutEndUtc { get; set; }
     public string SecurityStamp { get; set; } = Guid.NewGuid().ToString("N");
@@ -98,4 +104,17 @@ public static class SystemRoles
         Employee, Supervisor, DepartmentManager, HrOfficer, HrManager,
         FinanceOfficer, FinanceManager, SystemAdministrator, ManagementViewer, IntegrationAdministrator
     };
+}
+
+/// <summary>Single-use password reset / account invitation token, stored hashed.</summary>
+public class PasswordResetToken : Entity
+{
+    public Guid UserId { get; set; }
+    public required string TokenHash { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime ExpiresAtUtc { get; set; }
+    public DateTime? UsedAtUtc { get; set; }
+    /// <summary>"reset" or "invite".</summary>
+    public required string Purpose { get; set; }
+    public string? RequestedFromIp { get; set; }
 }

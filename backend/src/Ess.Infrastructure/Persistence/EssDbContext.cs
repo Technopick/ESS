@@ -32,6 +32,7 @@ public class EssDbContext : DbContext
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
     // Organisation (NAV mirrors)
     public DbSet<Company> Companies => Set<Company>();
@@ -119,7 +120,7 @@ public class EssDbContext : DbContext
                      .Where(p => p.ClrType == typeof(string) && p.GetMaxLength() is null))
         {
             var n = prop.Name;
-            if (n.EndsWith("Json") || n.EndsWith("Encrypted") || n.EndsWith("Masked") || n is "Body" or "BodyHtml" or "Description"
+            if (n.EndsWith("Json") || n.EndsWith("Hashes") || n.EndsWith("Encrypted") || n.EndsWith("Masked") || n is "Body" or "BodyHtml" or "Description"
                 || n is "Error" or "LastError" or "Value" or "Comment" or "Resolution" or "Reason" or "LastHealthCheckMessage" or "ChangesJson")
                 continue; // text
             prop.SetMaxLength(n.EndsWith("Url") || n is "StorageKey" or "Endpoint" or "LinkUrl" or "UserAgent" ? 1024 : 256);

@@ -1055,6 +1055,59 @@ namespace Ess.Infrastructure.Persistence.Migrations
                     b.ToTable("expense_claim_lines", (string)null);
                 });
 
+            modelBuilder.Entity("Ess.Domain.Identity.PasswordResetToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("purpose");
+
+                    b.Property<string>("RequestedFromIp")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("requested_from_ip");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTime?>("UsedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("used_at_utc");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_password_reset_tokens");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_password_reset_tokens_token_hash");
+
+                    b.HasIndex("UserId", "CreatedAtUtc")
+                        .HasDatabaseName("ix_password_reset_tokens_user_id_created_at_utc");
+
+                    b.ToTable("password_reset_tokens", (string)null);
+                });
+
             modelBuilder.Entity("Ess.Domain.Identity.Permission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1315,6 +1368,14 @@ namespace Ess.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("mfa_enabled");
 
+                    b.Property<long?>("MfaLastTimeStep")
+                        .HasColumnType("bigint")
+                        .HasColumnName("mfa_last_time_step");
+
+                    b.Property<string>("MfaRecoveryCodeHashes")
+                        .HasColumnType("text")
+                        .HasColumnName("mfa_recovery_code_hashes");
+
                     b.Property<string>("MfaSecretEncrypted")
                         .HasColumnType("text")
                         .HasColumnName("mfa_secret_encrypted");
@@ -1328,6 +1389,10 @@ namespace Ess.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("modified_by");
 
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("boolean")
+                        .HasColumnName("must_change_password");
+
                     b.Property<string>("NormalizedEmail")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -1339,6 +1404,10 @@ namespace Ess.Infrastructure.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("normalized_user_name");
+
+                    b.Property<DateTime?>("PasswordChangedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("password_changed_at_utc");
 
                     b.Property<string>("PasswordHash")
                         .HasMaxLength(256)
@@ -4570,6 +4639,16 @@ namespace Ess.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ReceiptDocumentId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_expense_claim_lines_employee_documents_receipt_document_id");
+                });
+
+            modelBuilder.Entity("Ess.Domain.Identity.PasswordResetToken", b =>
+                {
+                    b.HasOne("Ess.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_password_reset_tokens_users_user_id");
                 });
 
             modelBuilder.Entity("Ess.Domain.Identity.RefreshToken", b =>

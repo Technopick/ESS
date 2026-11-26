@@ -2110,3 +2110,75 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM __ef_migrations_history WHERE "migration_id" = '20261126135545_Phase2Identity') THEN
+    ALTER TABLE users ADD mfa_last_time_step bigint;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM __ef_migrations_history WHERE "migration_id" = '20261126135545_Phase2Identity') THEN
+    ALTER TABLE users ADD mfa_recovery_code_hashes text;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM __ef_migrations_history WHERE "migration_id" = '20261126135545_Phase2Identity') THEN
+    ALTER TABLE users ADD must_change_password boolean NOT NULL DEFAULT FALSE;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM __ef_migrations_history WHERE "migration_id" = '20261126135545_Phase2Identity') THEN
+    ALTER TABLE users ADD password_changed_at_utc timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM __ef_migrations_history WHERE "migration_id" = '20261126135545_Phase2Identity') THEN
+    CREATE TABLE password_reset_tokens (
+        id uuid NOT NULL,
+        user_id uuid NOT NULL,
+        token_hash character varying(256) NOT NULL,
+        created_at_utc timestamp with time zone NOT NULL,
+        expires_at_utc timestamp with time zone NOT NULL,
+        used_at_utc timestamp with time zone,
+        purpose character varying(256) NOT NULL,
+        requested_from_ip character varying(256),
+        CONSTRAINT pk_password_reset_tokens PRIMARY KEY (id),
+        CONSTRAINT fk_password_reset_tokens_users_user_id FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM __ef_migrations_history WHERE "migration_id" = '20261126135545_Phase2Identity') THEN
+    CREATE UNIQUE INDEX ix_password_reset_tokens_token_hash ON password_reset_tokens (token_hash);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM __ef_migrations_history WHERE "migration_id" = '20261126135545_Phase2Identity') THEN
+    CREATE INDEX ix_password_reset_tokens_user_id_created_at_utc ON password_reset_tokens (user_id, created_at_utc);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM __ef_migrations_history WHERE "migration_id" = '20261126135545_Phase2Identity') THEN
+    INSERT INTO __ef_migrations_history (migration_id, product_version)
+    VALUES ('20261126135545_Phase2Identity', '8.0.11');
+    END IF;
+END $EF$;
+COMMIT;
+

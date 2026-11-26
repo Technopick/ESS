@@ -32,6 +32,8 @@ public static class DependencyInjection
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IReferenceGenerator, ReferenceGenerator>();
         services.AddScoped<DatabaseSeeder>();
+        services.Configure<Email.SmtpOptions>(config.GetSection(Email.SmtpOptions.Section));
+        services.AddSingleton<IEmailSender, Email.SmtpEmailSender>();
         return services;
     }
 }

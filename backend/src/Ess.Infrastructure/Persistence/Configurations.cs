@@ -76,6 +76,16 @@ internal class RefreshTokenConfig : IEntityTypeConfiguration<RefreshToken>
     }
 }
 
+internal class PasswordResetTokenConfig : IEntityTypeConfiguration<PasswordResetToken>
+{
+    public void Configure(EntityTypeBuilder<PasswordResetToken> e)
+    {
+        e.HasIndex(x => x.TokenHash).IsUnique();
+        e.HasIndex(x => new { x.UserId, x.CreatedAtUtc });
+        e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 internal class CompanyConfig : IEntityTypeConfiguration<Company>
 {
     public void Configure(EntityTypeBuilder<Company> e)

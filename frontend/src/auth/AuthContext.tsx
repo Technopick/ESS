@@ -9,10 +9,15 @@ export interface Me {
   employeeId: string | null
 }
 
+export type LoginOutcome = { done: true } | { done: false; mfaChallenge: string }
+
 interface AuthState {
   me: Me | null
   loading: boolean
-  login: (userName: string, password: string) => Promise<void>
+  /** Signs in with a password. When MFA is on, returns the challenge to pass to verifyMfa. */
+  login: (userName: string, password: string) => Promise<LoginOutcome>
+  verifyMfa: (challenge: string, code: string) => Promise<void>
+  reload: () => Promise<void>
   logout: () => Promise<void>
   can: (permission: string) => boolean
 }
@@ -40,13 +45,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadMe])
 
   const login = useCallback(
-    async (userName: string, password: string) => {
-      const { data } = await api.post<{ accessToken: string }>('/auth/login', { userName, password })
+    async (userName: string, password: string): Promise<LoginOutcome> => {
+      const { data } = await api.post<{ accessToken: string | null; mfaRequired: boolean; mfaChallenge: string | null }>('/auth/login', {
+        userName,
+        password,
+      })
+      if (data.mfaRequired && data.mfaChallenge) return { done: false, mfaChallenge: data.mfaChallenge }
+      tokenStore.set(data.accessToken)
+      await loadMe()
+      return { done: true }
+    },
+    [loadMe],
+  )
+
+  const verifyMfa = useCallback(
+    async (challenge: string, code: string) => {
+      const { data } = await api.post<{ accessToken: string }>('/auth/mfa', { mfaChallenge: challenge, code })
       tokenStore.set(data.accessToken)
       await loadMe()
     },
     [loadMe],
   )
+
+  /** Gets a fresh access token (e.g. after enrolling MFA, so new claims apply) and reloads the profile. */
+  const reload = useCallback(async () => {
+    const t = await refreshAccessToken()
+    if (t) await loadMe()
+  }, [loadMe])
 
   const logout = useCallback(async () => {
     try {
@@ -58,8 +83,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AuthState>(
-    () => ({ me, loading, login, logout, can: (p) => !!me?.permissions.includes(p) }),
-    [me, loading, login, logout],
+    () => ({ me, loading, login, verifyMfa, reload, logout, can: (p) => !!me?.permissions.includes(p) }),
+    [me, loading, login, verifyMfa, reload, logout],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
@@ -71,11 +96,15 @@ export function useAuth() {
   return ctx
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const Permissions = {
   IntegrationView: 'integration.nav.view',
   IntegrationOperate: 'integration.nav.operate',
   DashboardManagement: 'dashboard.management',
   EmployeesViewAll: 'employees.view.all',
   ProfileViewOwn: 'profile.view.own',
+  ProfileRequestChange: 'profile.change.request',
+  EmployeesViewDirectory: 'employees.view.directory',
+  UsersManage: 'users.manage',
+  LeaveViewOwn: 'leave.view.own',
+  PayrollViewOwn: 'payroll.view.own',
 } as const

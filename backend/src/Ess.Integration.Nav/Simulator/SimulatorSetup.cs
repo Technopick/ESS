@@ -46,6 +46,7 @@ public static class SimulatorSetup
         Map("LeaveType", "OData", "ESSLeaveTypes");
         Map("LeaveBalance", "OData", "ESSLeaveBalances");
         Map("PayrollPeriod", "OData", "ESSPayrollPeriods");
+        Map("Employee.Profile", "Soap", Gateway, "GetEmployeeProfile");
         Map("Leave.Submit", "Soap", Gateway, "SubmitLeaveApplication");
         Map("Leave.Cancel", "Soap", Gateway, "CancelLeaveApplication");
         Map("Leave.Status", "Soap", Gateway, "GetLeaveStatus");

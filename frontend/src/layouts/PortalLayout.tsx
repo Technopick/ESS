@@ -10,6 +10,11 @@ import SyncAltIcon from '@mui/icons-material/SyncAlt'
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
 import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined'
+import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
+import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
+import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
 import { Permissions, useAuth } from '../auth/AuthContext'
 import { useThemeMode } from '../theme/AppThemeProvider'
 
@@ -24,10 +29,22 @@ interface NavItem {
 
 /** Navigation grouped by portal area (employee, manager, HR, management, administration). Items appear only when built and permitted. */
 const sections: { title: string; items: NavItem[] }[] = [
-  { title: 'My workspace', items: [{ to: '/', label: 'Home', icon: <HomeOutlinedIcon /> }] },
+  {
+    title: 'My workspace',
+    items: [
+      { to: '/', label: 'Home', icon: <HomeOutlinedIcon /> },
+      { to: '/profile', label: 'My profile', icon: <BadgeOutlinedIcon />, permission: Permissions.ProfileViewOwn },
+      { to: '/directory', label: 'Directory', icon: <GroupsOutlinedIcon />, permission: Permissions.EmployeesViewDirectory },
+      { to: '/account/security', label: 'Sign-in and security', icon: <LockOutlinedIcon /> },
+    ],
+  },
   {
     title: 'System administration',
-    items: [{ to: '/admin/integration', label: 'NAV integration', icon: <SyncAltIcon />, permission: Permissions.IntegrationView }],
+    items: [
+      { to: '/admin/users', label: 'Users', icon: <ManageAccountsOutlinedIcon />, permission: Permissions.UsersManage },
+      { to: '/admin/roles', label: 'Roles', icon: <AdminPanelSettingsOutlinedIcon />, permission: Permissions.UsersManage },
+      { to: '/admin/integration', label: 'NAV integration', icon: <SyncAltIcon />, permission: Permissions.IntegrationView },
+    ],
   },
 ]
 

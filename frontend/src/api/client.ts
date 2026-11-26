@@ -42,7 +42,12 @@ export async function refreshAccessToken(): Promise<string | null> {
   return token
 }
 
+/** Called when the API says the account must change its password or enrol MFA before doing anything else. */
+export const accountGate: { onRequired: (code: string) => void } = { onRequired: () => {} }
+
 api.interceptors.response.use(undefined, async (error: AxiosError) => {
+  const code = (error.response?.data as { code?: string } | undefined)?.code
+  if (error.response?.status === 403 && (code === 'mfa_enrolment_required' || code === 'password_change_required')) accountGate.onRequired(code)
   const original = error.config as (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined
   if (error.response?.status === 401 && original && !original._retried && !original.url?.startsWith('/auth/')) {
     original._retried = true
