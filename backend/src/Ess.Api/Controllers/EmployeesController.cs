@@ -1,3 +1,4 @@
+using Ess.Application.Workflow;
 using System.Text.Json;
 using Asp.Versioning;
 using Ess.Api.Infrastructure;
@@ -82,7 +83,7 @@ public sealed class EmployeesController : ControllerBase
     [HttpPost("me/change-requests")]
     [HasPermission(Permissions.ProfileRequestChange)]
     public async Task<IActionResult> RequestChange(ChangeRequestInput req, [FromServices] ISecretProtector secrets, [FromServices] IReferenceGenerator refs,
-        [FromServices] IAuditWriter audit, CancellationToken ct)
+        [FromServices] IAuditWriter audit, [FromServices] IWorkflowEngine workflow, CancellationToken ct)
     {
         var e = await _me.RequireAsync(ct);
         if (!ChangeSections.TryGetValue(req.Section ?? "", out var def))
@@ -103,6 +104,11 @@ public sealed class EmployeesController : ControllerBase
             Status = RequestStatus.Submitted, NavStatus = NavSyncStatus.NotRequired
         };
         _db.ProfileChangeRequests.Add(pcr);
+        // HR reviews the change through the approval workflow; on approval it is queued for NAV.
+        var result = await workflow.StartAsync(new WorkflowStartRequest(e.CompanyId, DocumentTypes.ProfileChange, pcr.Id, pcr.Reference, _user.UserId!.Value, e.Id,
+            null, $"{e.FullName}: change of {SectionLabel(pcr.Section)}", "/profile"), ct);
+        if (result.Outcome == WorkflowOutcome.Pending) pcr.Status = RequestStatus.InApproval;
+        pcr.WorkflowInstanceId = result.InstanceId;
         await _db.SaveChangesAsync(ct);
         await audit.WriteAsync("profile.change_requested", nameof(ProfileChangeRequest), pcr.Id.ToString(), new { pcr.Reference, pcr.Section, fields = req.Changes.Keys }, ct: ct);
         return Created($"/api/employees/me/change-requests/{pcr.Id}", new { pcr.Id, pcr.Reference });
@@ -168,6 +174,14 @@ public sealed class EmployeesController : ControllerBase
                             full && m != null ? m.FirstName + " " + m.LastName : null, full ? e.EmploymentDate : null);
         return await PagedResult<DirectoryEntry>.CreateAsync(projected, page, pageSize, ct);
     }
+
+    private static string SectionLabel(string section) => section switch
+    {
+        "BankDetails" => "bank details",
+        "NextOfKin" => "next of kin",
+        "EmergencyContacts" => "emergency contacts",
+        _ => System.Text.RegularExpressions.Regex.Replace(section, "(?<!^)([A-Z])", " $1").ToLowerInvariant()
+    };
 
     private static string CanonicalSection(string s) => ChangeSections.Keys.First(k => k.Equals(s, StringComparison.OrdinalIgnoreCase));
 

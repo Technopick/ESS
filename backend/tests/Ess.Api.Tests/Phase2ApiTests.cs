@@ -158,7 +158,7 @@ public sealed class Phase2ApiTests
     public async Task Employees_cannot_reach_admin_or_integration_endpoints_and_directory_hides_hr_fields()
     {
         Skip.If(EssApiFactory.BaseCs is null);
-        var c = await EmployeeAsync("amani.wanjiru@example.invalid");
+        var c = await EmployeeAsync("baraka.otieno@example.invalid");
         (await c.GetAsync("/api/admin/users")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await c.GetAsync("/api/integration/nav/status")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await _f.Anonymous().GetAsync("/api/employees/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -175,6 +175,19 @@ public sealed class Phase2ApiTests
     {
         Skip.If(EssApiFactory.BaseCs is null);
         var c = await EmployeeAsync("baraka.otieno@example.invalid");
+        await EmployeeAsync("amani.wanjiru@example.invalid");
+        using (var scope = _f.Services.CreateScope())
+        {
+            // Changes are reviewed by HR, so someone must hold the HR Officer role.
+            var db = scope.ServiceProvider.GetRequiredService<EssDbContext>();
+            var amani = await db.Users.SingleAsync(u => u.NormalizedEmail == "AMANI.WANJIRU@EXAMPLE.INVALID");
+            var role = await db.Roles.SingleAsync(r => r.Name == Ess.Domain.Identity.SystemRoles.HrOfficer);
+            if (!await db.UserRoles.AnyAsync(ur => ur.UserId == amani.Id && ur.RoleId == role.Id))
+            {
+                db.UserRoles.Add(new Ess.Domain.Identity.UserRole { UserId = amani.Id, RoleId = role.Id });
+                await db.SaveChangesAsync();
+            }
+        }
         var r = await c.PostAsJsonAsync("/api/employees/me/change-requests",
             new { section = "BankDetails", changes = new Dictionary<string, string> { ["bankName"] = "New Bank", ["accountNo"] = "9988776655443" }, reason = "Changed bank" });
         r.StatusCode.Should().Be(HttpStatusCode.Created);

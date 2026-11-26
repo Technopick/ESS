@@ -72,6 +72,10 @@ public class WorkflowInstance : AuditableEntity, ICompanyScoped
     public required string DocumentType { get; set; }
     public Guid DocumentId { get; set; }
     public required string DocumentReference { get; set; }
+    /// <summary>One-line description shown to approvers, e.g. "Annual leave, 3 days, 2–4 Dec 2026".</summary>
+    public string? Summary { get; set; }
+    /// <summary>Portal route of the document, for links in notifications.</summary>
+    public string? LinkUrl { get; set; }
     public Guid RequesterUserId { get; set; }
     public Guid RequesterEmployeeId { get; set; }
     public decimal? Amount { get; set; }
@@ -98,6 +102,10 @@ public class ApprovalTask : AuditableEntity
     public DateTime? LastReminderAtUtc { get; set; }
     public DateTime? ActedAtUtc { get; set; }
     public string? Comment { get; set; }
+    /// <summary>Set when the deadline passed and the task was escalated (once).</summary>
+    public DateTime? EscalatedAtUtc { get; set; }
+    /// <summary>For an escalation task, the overdue task it stands in for; approving either completes both.</summary>
+    public Guid? EscalatedFromTaskId { get; set; }
 }
 
 /// <summary>Append-only history of approval actions, timestamped and attributed (spec §5).</summary>

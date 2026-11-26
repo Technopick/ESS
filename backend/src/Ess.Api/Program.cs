@@ -41,6 +41,12 @@ try
     builder.Services.AddScoped<Ess.Api.Auth.PasswordResetService>();
     builder.Services.AddScoped<Ess.Api.Services.EmployeeContext>();
     builder.Services.AddScoped<Ess.Api.Services.LeaveBalanceService>();
+    builder.Services.AddScoped<Ess.Api.Services.LeaveService>();
+    builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.LeaveWorkflowHandler>();
+    builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.ProfileChangeWorkflowHandler>();
+    builder.Services.AddSingleton<Microsoft.AspNetCore.SignalR.IUserIdProvider, Ess.Api.Hubs.SubUserIdProvider>();
+    if (config.GetValue("Hosting:RunBackgroundWorkers", true) && config.GetValue("Notifications:DispatcherEnabled", true))
+        builder.Services.AddHostedService<Ess.Api.Notifications.NotificationDispatcher>();
     builder.Services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<Ess.Domain.Identity.User>, Microsoft.AspNetCore.Identity.PasswordHasher<Ess.Domain.Identity.User>>();
     builder.Services.AddEssInfrastructure(config);
     var isWorkerNode = config.GetValue("Hosting:RunBackgroundWorkers", true);
@@ -185,6 +191,8 @@ try
         jobs.AddOrUpdate<NavSyncService>("nav-sync-incremental", s => s.SyncAllCompaniesAsync(false, "schedule", CancellationToken.None), syncCron);
         jobs.AddOrUpdate<NavSyncService>("nav-sync-full", s => s.SyncAllCompaniesAsync(true, "schedule", CancellationToken.None), config["NavIntegration:FullSyncCron"] ?? "30 1 * * *");
         jobs.AddOrUpdate<ReconciliationService>("nav-reconciliation", s => s.RunAsync(CancellationToken.None), "*/5 * * * *");
+        jobs.AddOrUpdate<Ess.Application.Workflow.IWorkflowEngine>("workflow-deadlines", e => e.ProcessDeadlinesAsync(CancellationToken.None), "*/15 * * * *");
+        jobs.AddOrUpdate<Ess.Api.Services.LeaveService>("leave-nav-status", s => s.MirrorNavStatusesAsync(CancellationToken.None), "*/10 * * * *");
     }
 
     app.Run();

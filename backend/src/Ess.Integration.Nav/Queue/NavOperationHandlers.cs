@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Ess.Application.Integration;
+using Ess.Application.Notifications;
 using Ess.Domain.Common;
 using Ess.Domain.Integration;
 using Ess.Infrastructure.Persistence;
@@ -20,7 +21,12 @@ public interface INavOperationHandler
 public sealed class LeaveSubmitHandler : INavOperationHandler
 {
     private readonly INavLeaveService _nav;
-    public LeaveSubmitHandler(INavLeaveService nav) => _nav = nav;
+    private readonly INotificationService _notify;
+    public LeaveSubmitHandler(INavLeaveService nav, INotificationService notify)
+    {
+        _nav = nav;
+        _notify = notify;
+    }
     public string Operation => NavOperations.LeaveSubmit;
 
     public Task<NavResult<NavSubmissionReceipt>> ExecuteAsync(IntegrationQueueItem item, string payloadJson, CancellationToken ct) =>
@@ -35,6 +41,15 @@ public sealed class LeaveSubmitHandler : INavOperationHandler
         if (leave is null) return;
         leave.NavStatus = status;
         if (receipt is not null) leave.NavDocumentNo = receipt.NavDocumentNo;
+        if (status is not (NavSyncStatus.Posted or NavSyncStatus.Failed)) return;
+
+        var user = await db.EmployeeMappings.Where(m => m.EmployeeId == leave.EmployeeId).Select(m => (Guid?)m.UserId).FirstOrDefaultAsync(ct);
+        if (user is null) return;
+        await _notify.QueueAsync(status == NavSyncStatus.Posted
+            ? new NotificationRequest(leave.CompanyId, user.Value, NotificationEvents.NavPosted, $"{leave.Reference} is recorded in NAV",
+                $"Your leave {leave.Reference} is now recorded in NAV as {receipt?.NavDocumentNo}.", $"/leave/{leave.Id}", Email: false)
+            : new NotificationRequest(leave.CompanyId, user.Value, NotificationEvents.NavFailed, $"NAV did not accept {leave.Reference}",
+                $"NAV did not accept your leave {leave.Reference}: {item.LastError}. HR has been alerted; you can cancel it and apply again.", $"/leave/{leave.Id}"), ct);
     }
 }
 
@@ -106,6 +121,8 @@ public sealed class EmployeeChangeHandler : INavOperationHandler
     public async Task ApplyOutcomeAsync(EssDbContext db, IntegrationQueueItem item, NavSyncStatus status, NavSubmissionReceipt? receipt, CancellationToken ct)
     {
         var req = await db.ProfileChangeRequests.FirstOrDefaultAsync(x => x.Id == item.EntityId, ct);
-        if (req is not null) req.NavStatus = status;
+        if (req is null) return;
+        req.NavStatus = status;
+        if (status == NavSyncStatus.Posted) req.Status = RequestStatus.Completed;
     }
 }

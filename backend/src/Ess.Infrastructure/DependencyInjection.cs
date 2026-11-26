@@ -32,6 +32,8 @@ public static class DependencyInjection
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IReferenceGenerator, ReferenceGenerator>();
         services.AddScoped<DatabaseSeeder>();
+        services.AddScoped<Ess.Application.Notifications.INotificationService, Notifications.NotificationService>();
+        services.AddScoped<Ess.Application.Workflow.IWorkflowEngine, Workflow.WorkflowEngine>();
         services.Configure<Email.SmtpOptions>(config.GetSection(Email.SmtpOptions.Section));
         services.AddSingleton<IEmailSender, Email.SmtpEmailSender>();
         return services;
