@@ -62,15 +62,25 @@ $package = $PSScriptRoot
 if (-not (Test-Path (Join-Path $package 'app\Ess.Api.dll'))) { throw "No application found in $package\app. Run the script from the extracted package." }
 
 Write-Step 'Checking IIS features'
-$features = 'Web-Server', 'Web-WebSockets', 'Web-AppInit', 'Web-Http-Redirect', 'Web-Filtering', 'Web-Mgmt-Console', 'Web-Scripting-Tools'
 if (Get-Command Get-WindowsFeature -ErrorAction SilentlyContinue) {
-    $missing = $features | Where-Object { -not (Get-WindowsFeature $_).Installed }
+    # Windows Server
+    $features = 'Web-Server', 'Web-WebSockets', 'Web-AppInit', 'Web-Http-Redirect', 'Web-Filtering', 'Web-Mgmt-Console', 'Web-Scripting-Tools'
+    $missing = @($features | Where-Object { -not (Get-WindowsFeature $_).Installed })
     if ($missing) {
         if (-not $InstallPrerequisites) { throw "Missing Windows features: $($missing -join ', '). Re-run with -InstallPrerequisites or install them." }
         Install-WindowsFeature -Name $missing | Out-Null
     }
+} elseif (Get-Command Get-WindowsOptionalFeature -ErrorAction SilentlyContinue) {
+    # Windows 10/11 (for UAT or a small site): the same features under their client names.
+    $features = 'IIS-WebServerRole', 'IIS-WebServer', 'IIS-CommonHttpFeatures', 'IIS-DefaultDocument', 'IIS-StaticContent', 'IIS-HttpErrors',
+        'IIS-HttpRedirect', 'IIS-RequestFiltering', 'IIS-HttpLogging', 'IIS-WebSockets', 'IIS-ApplicationInit', 'IIS-ManagementConsole', 'IIS-ManagementScriptingTools'
+    $missing = @($features | Where-Object { (Get-WindowsOptionalFeature -Online -FeatureName $_).State -ne 'Enabled' })
+    if ($missing) {
+        if (-not $InstallPrerequisites) { throw "Missing Windows features: $($missing -join ', '). Re-run with -InstallPrerequisites or enable them in 'Turn Windows features on or off'." }
+        Enable-WindowsOptionalFeature -Online -FeatureName $missing -All -NoRestart | Out-Null
+    }
 } else {
-    Write-Warning 'Not Windows Server: make sure IIS, WebSocket Protocol and Application Initialization are enabled.'
+    Write-Warning 'Could not check Windows features: make sure IIS, WebSocket Protocol and Application Initialization are enabled.'
 }
 
 Write-Step 'Checking the ASP.NET Core 8 Hosting Bundle'
@@ -114,7 +124,7 @@ $p.Recycling.PeriodicRestart.Schedule.Clear()
 [void] $p.Recycling.PeriodicRestart.Schedule.Add([TimeSpan]::FromHours(3))   # daily recycle at 03:00, outside working hours
 if ($ServiceAccount) {
     $p.ProcessModel.IdentityType = 'SpecificUser'
-    $p.ProcessModel.UserName = $ServiceAccount.UserName
+    $p.ProcessModel.UserName = [string]$ServiceAccount.UserName
     $p.ProcessModel.Password = $ServiceAccount.GetNetworkCredential().Password
     $identity = $ServiceAccount.UserName
 } else {
@@ -155,9 +165,10 @@ if ($BootstrapAdminUserName -and $BootstrapAdminPassword) {
 
 $coll = $p.GetChildElement('environmentVariables').GetCollection()
 foreach ($name in $envVars.Keys) {
-    $old = $coll | Where-Object { $_['name'] -eq $name }
-    if ($old) { $coll.Remove($old) }
-    $el = $coll.CreateElement('add'); $el['name'] = $name; $el['value'] = $envVars[$name]; [void] $coll.Add($el)
+    foreach ($old in @($coll | Where-Object { $_['name'] -eq $name })) { $coll.Remove($old) }
+    # [string] matters: IIS configuration attributes reject PowerShell-wrapped values (such as Join-Path output) with
+    # DISP_E_TYPEMISMATCH.
+    $el = $coll.CreateElement('add'); $el['name'] = [string]$name; $el['value'] = [string]$envVars[$name]; [void] $coll.Add($el)
 }
 
 # ---------------------------------------------------------------- site
@@ -165,19 +176,19 @@ Write-Step "Configuring site $SiteName"
 $site = $sm.Sites[$SiteName]
 $bindingInfo = "*:${HttpsPort}:$HostName"
 if (-not $site) {
-    $site = $sm.Sites.Add($SiteName, 'https', $bindingInfo, $app)
+    $site = $sm.Sites.Add([string]$SiteName, 'https', [string]$bindingInfo, [string]$app)
     $site.Bindings[0].CertificateHash = $cert.GetCertHash()
     $site.Bindings[0].CertificateStoreName = 'My'
     $site.Bindings[0].SslFlags = 'Sni'
 } else {
-    $site.Applications['/'].VirtualDirectories['/'].PhysicalPath = $app
+    $site.Applications['/'].VirtualDirectories['/'].PhysicalPath = [string]$app
     $https = $site.Bindings | Where-Object { $_.Protocol -eq 'https' -and $_.BindingInformation -eq $bindingInfo }
     if (-not $https) { $https = $site.Bindings.Add($bindingInfo, $cert.GetCertHash(), 'My', 'Sni') } else { $https.CertificateHash = $cert.GetCertHash() }
 }
 # Plain HTTP only redirects to HTTPS (the app also sends HSTS).
 if (-not ($site.Bindings | Where-Object { $_.Protocol -eq 'http' -and $_.BindingInformation -eq "*:80:$HostName" })) { [void] $site.Bindings.Add("*:80:$HostName", 'http') }
-$site.Applications['/'].ApplicationPoolName = $AppPoolName
-$site.ApplicationDefaults.ApplicationPoolName = $AppPoolName
+$site.Applications['/'].ApplicationPoolName = [string]$AppPoolName
+$site.ApplicationDefaults.ApplicationPoolName = [string]$AppPoolName
 $site.Applications['/'].SetAttributeValue('preloadEnabled', $true)
 $site.ServerAutoStart = $true
 $sm.CommitChanges()

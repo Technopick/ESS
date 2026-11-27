@@ -23,16 +23,25 @@ try {
     Get-ChildItem $PSScriptRoot -Filter *.ps1 | Unblock-File
 
     Step 'Installing the IIS features'
-    $features = 'Web-Server', 'Web-WebSockets', 'Web-AppInit', 'Web-Http-Redirect', 'Web-Filtering', 'Web-Mgmt-Console', 'Web-Scripting-Tools'
     if (Get-Command Install-WindowsFeature -ErrorAction SilentlyContinue) {
-        $missing = $features | Where-Object { -not (Get-WindowsFeature $_).Installed }
+        $features = 'Web-Server', 'Web-WebSockets', 'Web-AppInit', 'Web-Http-Redirect', 'Web-Filtering', 'Web-Mgmt-Console', 'Web-Scripting-Tools'
+        $missing = @($features | Where-Object { -not (Get-WindowsFeature $_).Installed })
         if ($missing) { Install-WindowsFeature -Name $missing | Out-Null; Write-Host "Added: $($missing -join ', ')" } else { Write-Host 'Already installed.' }
+    } elseif (Get-Command Enable-WindowsOptionalFeature -ErrorAction SilentlyContinue) {
+        $features = 'IIS-WebServerRole', 'IIS-WebServer', 'IIS-CommonHttpFeatures', 'IIS-DefaultDocument', 'IIS-StaticContent', 'IIS-HttpErrors',
+            'IIS-HttpRedirect', 'IIS-RequestFiltering', 'IIS-HttpLogging', 'IIS-WebSockets', 'IIS-ApplicationInit', 'IIS-ManagementConsole', 'IIS-ManagementScriptingTools'
+        $missing = @($features | Where-Object { (Get-WindowsOptionalFeature -Online -FeatureName $_).State -ne 'Enabled' })
+        if ($missing) { Enable-WindowsOptionalFeature -Online -FeatureName $missing -All -NoRestart | Out-Null; Write-Host "Enabled: $($missing -join ', ')" } else { Write-Host 'Already enabled.' }
     }
 
     Step 'Checking the ASP.NET Core 8 Hosting Bundle'
     $ancm = Join-Path $env:ProgramFiles 'IIS\Asp.Net Core Module\V2\aspnetcorev2.dll'
     $hasRuntime = (Get-ChildItem "$env:ProgramFiles\dotnet\shared\Microsoft.AspNetCore.App" -Directory -ErrorAction SilentlyContinue | Where-Object Name -like '8.*')
-    if (-not (Test-Path $ancm) -or -not $hasRuntime) {
+    # The module must also be registered in IIS: if IIS was enabled after the bundle was installed, it is not, and the
+    # bundle has to be repaired.
+    $appHost = Join-Path $env:windir 'System32\inetsrv\config\applicationHost.config'
+    $registered = (Test-Path $appHost) -and (Select-String -Path $appHost -Pattern 'AspNetCoreModuleV2' -SimpleMatch -Quiet)
+    if (-not (Test-Path $ancm) -or -not $hasRuntime -or -not $registered) {
         $file = Join-Path $env:TEMP 'dotnet-hosting-8-win.exe'
         Write-Host "Downloading from $($in.HOSTING_BUNDLE_URL)"
         try {
@@ -41,7 +50,8 @@ try {
         } catch {
             throw "Could not download the Hosting Bundle ($($_.Exception.Message)). Download 'ASP.NET Core 8.0 Hosting Bundle' from https://dotnet.microsoft.com/download/dotnet/8.0 on another machine, install it here, then run setup again."
         }
-        $p = Start-Process $file -ArgumentList '/install', '/quiet', '/norestart' -Wait -PassThru
+        $mode = if ((Test-Path $ancm) -and $hasRuntime) { '/repair' } else { '/install' }
+        $p = Start-Process $file -ArgumentList $mode, '/quiet', '/norestart' -Wait -PassThru
         if ($p.ExitCode -notin 0, 3010) { throw "The Hosting Bundle installer failed with code $($p.ExitCode)." }
         & iisreset /noforce | Out-Null
         Write-Host 'Installed.'
