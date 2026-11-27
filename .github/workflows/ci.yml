@@ -92,5 +92,6 @@ jobs:
           name: ess-portal-win-x64
           path: |
             out/*.zip
+            out/*.exe
             out/*.sha256
           retention-days: 30

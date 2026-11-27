@@ -16,7 +16,9 @@
 [CmdletBinding()]
 param(
     [string] $Version,
-    [string] $OutputDirectory
+    [string] $OutputDirectory,
+    # Skip building EssPortalSetup-x64.exe (only the zip package).
+    [switch] $NoSetup
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -67,7 +69,7 @@ Get-ChildItem (Join-Path $staging 'app') -Filter 'appsettings.*.json' |
 
 New-Item -ItemType Directory -Path (Join-Path $staging 'sql') | Out-Null
 Copy-Item (Join-Path $repo 'deploy\sql\*.sql') (Join-Path $staging 'sql')
-Copy-Item (Join-Path $PSScriptRoot '*.ps1') $staging -Exclude 'Build-EssPackage.ps1'
+Copy-Item (Join-Path $PSScriptRoot '*.ps1') $staging -Exclude 'Build-EssPackage.ps1'   # includes Run-Setup.ps1 for the setup .exe
 Copy-Item (Join-Path $repo 'docs\deployment-windows-iis.md') $staging
 Set-Content -Path (Join-Path $staging 'version.txt') -Value $Version -Encoding ascii
 
@@ -78,3 +80,18 @@ $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
 Set-Content -Path "$zip.sha256" -Value "$hash  $(Split-Path $zip -Leaf)" -Encoding ascii
 Write-Host "Package: $zip" -ForegroundColor Green
 Write-Host "SHA-256: $hash"
+
+if (-not $NoSetup) {
+    # One-file setup: the package above embedded in EssPortalSetup-x64.exe, which drives the same scripts.
+    Invoke-Step 'Building the setup program' {
+        dotnet publish (Join-Path $PSScriptRoot 'Setup\EssPortalSetup.csproj') -c Release -p:PayloadZip=$zip `
+            -p:Version=$assemblyVersion -p:InformationalVersion=$Version -o (Join-Path $staging '..\setup')
+    }
+    $exe = Join-Path $OutputDirectory "EssPortalSetup-$Version-x64.exe"
+    Move-Item (Join-Path $OutputDirectory 'setup\EssPortalSetup-x64.exe') $exe -Force
+    Remove-Item (Join-Path $OutputDirectory 'setup') -Recurse -Force
+    $exeHash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+    Set-Content -Path "$exe.sha256" -Value "$exeHash  $(Split-Path $exe -Leaf)" -Encoding ascii
+    Write-Host "Setup:   $exe" -ForegroundColor Green
+    Write-Host "SHA-256: $exeHash"
+}
