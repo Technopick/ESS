@@ -28,6 +28,11 @@ if (-not $Version) {
     if (-not $Version) { $Version = (Get-Date -Format 'yyyy.MM.dd.HHmm') }
 }
 
+# The assembly version must be numeric (2 to 4 parts). A tag such as v1.2.0 gives 1.2.0; a bare commit hash
+# (git describe without tags) gives nothing usable, so fall back to 0.0.0 and keep the hash in InformationalVersion.
+$assemblyVersion = ($Version -replace '^[vV]', '') -replace '[^0-9\.].*$', ''
+if ($assemblyVersion -notmatch '^\d+\.\d+(\.\d+){0,2}$') { $assemblyVersion = '0.0.0' }
+
 $staging = Join-Path $OutputDirectory "ess-portal-$Version"
 if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
 New-Item -ItemType Directory -Path $staging | Out-Null
@@ -40,7 +45,7 @@ function Invoke-Step([string] $Name, [scriptblock] $Action) {
 
 Invoke-Step 'Publishing the API' {
     dotnet publish (Join-Path $repo 'backend\src\Ess.Api\Ess.Api.csproj') -c Release -r win-x64 --self-contained false `
-        -p:Version=$($Version -replace '[^0-9\.].*$','') -p:InformationalVersion=$Version -o (Join-Path $staging 'app')
+        -p:Version=$assemblyVersion -p:InformationalVersion=$Version -o (Join-Path $staging 'app')
 }
 
 Invoke-Step 'Building the frontend' {
