@@ -61,9 +61,9 @@ Write-Host '==> Assembling the package' -ForegroundColor Cyan
 $wwwroot = Join-Path $staging 'app\wwwroot'
 New-Item -ItemType Directory -Path $wwwroot -Force | Out-Null
 Copy-Item (Join-Path $repo 'frontend\dist\*') $wwwroot -Recurse -Force
-# Development and test settings stay out of production packages.
+# Development and test settings stay out of the package; UAT settings stay for -Environment UAT installs.
 Get-ChildItem (Join-Path $staging 'app') -Filter 'appsettings.*.json' |
-    Where-Object { $_.Name -notin @('appsettings.Production.json') } | Remove-Item -Force
+    Where-Object { $_.Name -notin @('appsettings.Production.json', 'appsettings.UAT.json') } | Remove-Item -Force
 
 New-Item -ItemType Directory -Path (Join-Path $staging 'sql') | Out-Null
 Copy-Item (Join-Path $repo 'deploy\sql\*.sql') (Join-Path $staging 'sql')
