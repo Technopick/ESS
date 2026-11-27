@@ -1,6 +1,6 @@
 # Required NAV customisations
 
-Status: Phase 1 specification. Version 0.1, 26 November 2026. Object IDs are placeholders in the 50100–50149 range; use the customer's licensed range.
+Status: updated for the customer's NAV 2016 (9.0). Version 0.2, 27 November 2026. Object IDs are placeholders in the 50100–50149 range; use the customer's licensed range.
 
 Standard NAV/BC does not include leave applications, leave balances, payroll or staff claims. The portal therefore needs a small, self-contained NAV customisation (C/AL for NAV 2013–BC14, an AL extension for BC15+). It adds no business rules of its own: every method calls the customer's existing HR/payroll add-on routines where they exist, so NAV logic is never bypassed.
 
@@ -56,7 +56,8 @@ FindLeaveByExternalRef(externalRef: Code[50]) : Code[20]     // '' when not foun
 
 SubmitExpenseClaim(externalRef: Code[50]; portalRef: Code[30]; employeeNo: Code[20]; purpose: Text[250];
     currencyCode: Code[10]; projectCode: Code[20]; costCentreCode: Code[20]; preApproved: Boolean;
-    approvedBy: Text[80]; linesJson: BigText) : Code[20]
+    approvedBy: Text[80]; linesXml: BigText) : Code[20]
+    // NAV 2013 to 2018 (C/AL) receive linesXml; BC (AL) receives linesJson with the same fields.
     // Creates the claim document (purchase invoice for the employee vendor, or the add-on's staff claim)
     // for finance to review and post. Never posts to the G/L.
 GetClaimStatus(documentNo: Code[20]; VAR statusReason: Text[250]) : Text[30]
@@ -70,7 +71,15 @@ GetEmployeeProfile(employeeNo: Code[20]) : BigText            // JSON, see secti
 GetPayslipPdf(employeeNo: Code[20]; periodCode: Code[20]) : BigText   // base64 PDF of the payroll add-on's payslip report
 ```
 
-JSON parameters: NAV 2013–2016 have no native JSON type; use the DotNet `Newtonsoft.Json` interop that ships with the service tier, or pass lines as a fixed delimited text. NAV 2017+ and BC have `JsonObject` / `JsonArray`.
+Structured parameters: C/AL (NAV 2013 to 2018) has no JSON type, so for these versions the portal sends expense lines as XML, which C/AL reads with an XMLport (from an InStream over the BigText) or with codeunit 6224 "XML DOM Management":
+
+```xml
+<Lines>
+  <Line lineNo="10" expenseCode="TRAVEL" date="2026-11-03" amount="1234.5" currency="KES">Taxi to the airport</Line>
+</Lines>
+```
+
+Amounts use a full stop as the decimal separator and dates are yyyy-MM-dd whatever the NAV server's regional settings, so evaluate them with `EVALUATE(Amount, Text, 9)` (XML format). `changesJson` and the profile returned by `GetEmployeeProfile` stay JSON text: the portal builds and reads them, and in C/AL they are only assembled as text (see section 4) or applied field by field.
 
 ## 4. Profile JSON returned by `GetEmployeeProfile`
 
@@ -96,7 +105,26 @@ The portal masks `accountNo` to the last four digits before display, and masks I
 4. Publish the codeunit and pages in "Web Services" with the service names in the mapping document.
 5. Enable change log on the Employee table for fields the portal can change.
 
-## 6. Test checklist for the customisation
+## 6. NAV 2016 (customer) set-up
+
+The customer runs NAV 2016 with standard HR plus extensions and custom tables where needed. For this version:
+
+1. **Packaging.** Deliver the ESS objects as a .fob in the customer's licensed range, or as a NAV 2016 Extension (.navx) if the objects only add new tables, pages and codeunits. An extension keeps the base application untouched and is easy to remove. Either way the objects call the existing HR and payroll routines; where the customer has custom tables (for example leave applications or payroll lines), the ESS pages read those tables and the gateway calls their existing posting functions.
+2. **Service tier (NAV Server Administration, instance DynamicsNAV90 by default).** Enable SOAP Services (port 7047) and OData Services (port 7048), and check that "Enable OData V4 Endpoint" is ticked. Set "Max Page Size" for OData (default 1000; the portal pages by itself, so any value works). Restart the instance after the change.
+3. **Authentication.** NAV 2016 supports Windows and NavUserPassword (no OAuth). With the portal on Windows/IIS in the same domain, Windows authentication is simplest: run the IIS application pool as a domain service account, create that account as a NAV Windows user with the ESS-PORTAL permission set, and leave the user name empty on the portal's NAV connection screen. With NavUserPassword the instance needs an SSL certificate; the portal can then use the user's password or its web service access key.
+4. **Publish** page 50100 to 50106 and codeunit 50100 in page 810 "Web Services" with the service names in the mapping document (ESSEmployees, ESSLeaveTypes, ESSLeaveBalances, ESSPayrollPeriods, ESSPayslipHeaders, ESSPayslipLines, ESSDepartments, ESSPositions, ESSLocations, ESSPortalGateway), tick Published, and copy the OData V4 and SOAP URLs shown there.
+5. **In the portal:** System administration, NAV connection, Add a NAV connection, choose NAV 2016, enter the server name and use "Fill in addresses", choose the sign-in, save, then "Add the standard ESS mappings". Link the portal company to the NAV company name exactly as NAV shows it, and run Test connection on the NAV integration page.
+
+What the portal already handles for NAV 2016:
+
+* Reads use OData V4 (`/ODataV4/Company('<name>')/<service>`); writes use the SOAP gateway, so NAV business logic always runs.
+* "Last Date Modified" on Employee is a date without time. The incremental sync re-reads the last day, and a full sync runs nightly to catch deletions.
+* `$top` ends a NAV OData result without a next link, so the employee sync pages with `$skip` (and follows NAV's next link when there is one).
+* Option values in OData V4 arrive encoded (`Sick_x0020_Leave`, `_blank_`); the portal turns them back into captions.
+* The record version comes from `@odata.etag`.
+* SOAP dates are sent as yyyy-MM-dd and decimals with a full stop.
+
+## 7. Test checklist for the customisation
 
 * Calling `SubmitLeaveApplication` twice with the same `externalRef` returns the same Document No. and creates one document.
 * A request exceeding the balance raises an ERROR with a readable message.

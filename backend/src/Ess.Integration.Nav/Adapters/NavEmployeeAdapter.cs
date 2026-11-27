@@ -70,14 +70,35 @@ public sealed class NavEmployeeAdapter : NavAdapterBase, INavEmployeeService
                 filter = DateFilter(ctx, modifiedField, dateOnly ? "ge" : "gt", dateOnly ? since.Date : since, dateOnly);
             }
 
-            var page = await OData.GetPageAsync(ctx, Endpoint, new NavODataClient.Query(Filter: filter, Top: continuation is null ? PageSize : null), continuation, ct);
+            // NAV's OData $top limits the whole result and then returns no nextLink, so paging uses $skip; a server-driven
+            // nextLink (NAV "Max Page Size" smaller than the page) is followed when NAV sends one.
+            var skip = ParseSkip(continuation);
+            var nextLink = skip is null ? continuation : null;
+            var page = await OData.GetPageAsync(ctx, Endpoint,
+                new NavODataClient.Query(Filter: filter, OrderBy: nextLink is null ? map.NavField("No") : null, Top: nextLink is null ? PageSize : null, Skip: skip), nextLink, ct);
             if (!page.Success) return NavResult<NavPage<NavEmployeeRecord>>.Fail(page.Error!);
 
             var records = page.Value!.Rows.Select(r => ToRecord(map, r)).ToList();
             var maxModified = records.Select(r => r.LastModifiedUtc).Where(d => d is not null).DefaultIfEmpty(null).Max();
             var next = maxModified?.ToString("O") ?? watermark;
-            return NavResult<NavPage<NavEmployeeRecord>>.Ok(new NavPage<NavEmployeeRecord>(records, next, page.Value.NextLink is not null, page.Value.NextLink));
+            var more = NextContinuation(records.Count, PageSize, page.Value.NextLink, skip ?? 0);
+            return NavResult<NavPage<NavEmployeeRecord>>.Ok(new NavPage<NavEmployeeRecord>(records, next, more is not null, more));
         }, ct);
+
+    private const string SkipPrefix = "skip:";
+
+    private static int? ParseSkip(string? continuation) =>
+        continuation is not null && continuation.StartsWith(SkipPrefix, StringComparison.Ordinal) && int.TryParse(continuation[SkipPrefix.Length..], out var n) ? n : null;
+
+    /// <summary>
+    /// Where the next page starts: NAV's nextLink when it sent one, otherwise "skip:n" after a full page (NAV stopped at $top),
+    /// otherwise null (last page).
+    /// </summary>
+    public static string? NextContinuation(int rowsReturned, int pageSize, string? nextLink, int currentSkip)
+    {
+        if (nextLink is not null) return nextLink;
+        return rowsReturned >= pageSize ? SkipPrefix + (currentSkip + rowsReturned) : null;
+    }
 
     public Task<NavResult<NavEmployeeProfile>> GetProfileAsync(Guid companyId, string employeeNo, CancellationToken ct) =>
         RunAsync(companyId, "Employee.Profile", async ctx =>
