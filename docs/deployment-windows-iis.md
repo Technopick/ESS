@@ -32,6 +32,19 @@ The API serves the React app itself, so IIS needs a single site and no URL Rewri
 
 ## 3. First installation
 
+### The quick way: EssPortalSetup-x64.exe
+
+`EssPortalSetup-<version>-x64.exe` is the whole package in one 64-bit file (built by `Build-EssPackage.ps1` and by CI).
+
+1. Install PostgreSQL 16 on the server (or its command line tools if the database is on another server), and import the HTTPS certificate into Local Computer > Personal.
+2. Copy the setup file to the server, right-click it, **Run as administrator**. Windows SmartScreen may warn because the file is not code-signed: choose *More info > Run anyway*.
+3. Answer the questions. Press Enter to accept a default. Passwords are typed hidden and never saved. Setup then adds the IIS features, downloads and installs the ASP.NET Core 8 Hosting Bundle if missing, creates the database, and installs the site.
+4. Continue at step 4 below (sign in, NAV connection, backups).
+
+Running the same or a newer setup file again **updates** the portal: the database script is idempotent, data is kept, and the previous answers (not the passwords) are offered as defaults. Setup logs to `C:\ProgramData\EssPortalSetup\setup-*.log`. If the database password was generated, setup shows it once at the end: store it, because backups and updates need it.
+
+### Step by step with the scripts
+
 1. **Build the package** on a build machine (or download it from the GitHub Actions run of the release): `.\deploy\windows\Build-EssPackage.ps1 -Version 1.0.0`. Copy `ess-portal-1.0.0-win-x64.zip` to the server, check the SHA-256 against the `.sha256` file, and extract it, for example to `C:\Install\ess-portal-1.0.0`.
 2. **Create the database** (as Administrator, from the extracted folder):
    ```powershell
