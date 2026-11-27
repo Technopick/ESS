@@ -18,6 +18,10 @@ services:
       Database__MigrateOnStartup: ${MIGRATE_ON_STARTUP:-false}
       Bootstrap__AdminUserName: ${BOOTSTRAP_ADMIN_USER:-}
       Bootstrap__AdminPassword: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      Sms__Provider: ${SMS_PROVIDER:-None}
+      Sms__Username: ${SMS_USERNAME:-}
+      Sms__ApiKey: ${SMS_API_KEY:-}
+      Sms__SenderId: ${SMS_SENDER_ID:-}
     volumes: [ "dpkeys:/home/app/.aspnet/DataProtection-Keys", "files:/data/files" ]
     depends_on: { db: { condition: service_healthy } }
 

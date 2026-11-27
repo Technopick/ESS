@@ -13,6 +13,8 @@ import { integrationApi, type ConnectionTestResult, type QueueStatus } from '../
 import { errorMessage } from '../../api/client'
 import { EmptyState, ErrorState, LoadingState } from '../../components/StateViews'
 import { Permissions, useAuth } from '../../auth/AuthContext'
+import { ExportMenu } from '../../components/ExportMenu'
+import { download } from '../../api/admin'
 
 dayjs.extend(relativeTime)
 const ago = (v: string | null) => (v ? dayjs(v).fromNow() : 'never')
@@ -87,7 +89,11 @@ export function IntegrationDashboardPage() {
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h1">NAV integration</Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Typography variant="h1">NAV integration</Typography>
+        {/* Logs are masked on the server; the export covers the last 7 days. */}
+        <ExportMenu onExport={(format) => download('/integration/nav/logs/export', { format })} onError={(e) => setToast(errorMessage(e))} />
+      </Stack>
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 6, md: 2 }}><Metric label="Pending" value={s.pending + s.processing} /></Grid>

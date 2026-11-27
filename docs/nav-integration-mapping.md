@@ -22,14 +22,14 @@ Legend for "Standard NAV": **Yes** = exists in a standard NAV/BC database; **Par
 |---|---|---|---|---|---|
 | `Employee` | Employee master | Incremental every 15 min + nightly full | Yes, table 5200 (no department/position fields) | Page 5201 "Employee List" or ESS page, published as `ESSEmployees` | Standard `v2.0/employees` (no manager/department) or custom `ess/hr/v1.0/employees` |
 | `Employee.Profile` | Personal details, next of kin, dependants, qualifications, masked bank | On demand | Partial (Alternative Address 5201, Employee Qualification 5203, Employee Relative 5205); bank details No | Codeunit method returning JSON | Custom API page or codeunit |
-| `Department` | Departments | Every sync | No dedicated table; usually Dimension Values of Global Dimension 1 | Dimension Values page filtered to the department dimension | Standard `v2.0/dimensions(<id>)/dimensionValues` or custom |
+| `Department` | Departments | Every sync | No dedicated table; usually Dimension Values of Global Dimension 1 | Dimension Values page filtered to the department dimension | Standard `v2.0/dimensions(<id>)/dimensionValues` or custom. Head and parent department are maintained in the portal (HR, Organisation) unless the add-on exposes them. |
 | `Position` | Job titles / positions | Every sync | No (Employee "Job Title" text only) | HR add-on table or ESS page | Custom |
 | `Location` | Work locations | Every sync | Partial (Location table is for inventory; usually Global Dimension 2) | Dimension Values | Custom |
 | `BaseCalendar` | Non-working days / public holidays | Daily | Yes (Base Calendar Change 7601) | Page on table 7601 | Custom API page |
 | `LeaveType` | Leave types | Every sync | Partial (Cause of Absence 5206) | Page 5210 "Causes of Absence" or add-on | Standard `causesOfAbsence` (v1.0 API page) or custom |
 | `LeaveBalance` | Entitlement, taken, pending, balance per type and period | On demand, cached minutes | No | Add-on or ESS query page | Custom |
 | `PayrollPeriod` | Payroll periods | Every sync | No | Payroll add-on | Custom |
-| `Payslip.Header` | Gross, deductions, net, payment date | On demand | No | Payroll add-on | Custom |
+| `Payslip.Header` | Gross, deductions, net, payment date | On demand | No | Payroll add-on | Custom. The payroll summary report also reads headers by period and lines of type Statutory, for closed periods only. |
 | `Payslip.Lines` | Earnings, allowances, PAYE, NSSF, SHIF, Housing Levy, other deductions, YTD | On demand | No | Payroll add-on | Custom |
 
 ### Default field maps
@@ -49,7 +49,7 @@ These are built into the adapters and can be overridden per instance.
 | CompanyEmail | `Company_E_Mail` | Used for notifications and user linking. |
 | MobilePhone | `Mobile_Phone_No` | SMS notifications. |
 | Status | `Status` | Active / Inactive / Terminated. Unknown values map to Inactive (no access). |
-| EmploymentDate / ContractEndDate | `Employment_Date` / `Termination_Date` | Contract expiry alerts need a real contract end field if the add-on has one. |
+| EmploymentDate / ContractEndDate / TerminationDate | `Employment_Date` / `Contract_End_Date` / `Termination_Date` (BC API: `employmentDate` / `contractEndDate` / `terminationDate`) | Standard NAV has no contract end field; point `ContractEndDate` at the HR add-on's field in the field mapping. Contract expiry alerts and the contract expiry report depend on it. |
 | BirthDate | `Birth_Date` | Only kept if birthday display is enabled. |
 | LastModified | `Last_Date_Modified` | Date only in NAV, so incremental sync re-reads the whole watermark day. BC uses `lastModifiedDateTime` / `SystemModifiedAt`. |
 

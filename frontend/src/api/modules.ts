@@ -97,6 +97,9 @@ export interface DocumentItem {
 export const documentsApi = {
   categories: () => get<DocumentCategory[]>('/documents/categories'),
   mine: () => get<DocumentItem[]>('/documents/mine'),
+  /** HR: documents within the user's scope, optionally for one employee. */
+  list: (q: { employeeId?: string; categoryId?: string; expiringOnly?: boolean; page?: number }) =>
+    get<Paged<DocumentItem>>('/documents', Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== '' && v !== false))),
   upload: (file: File, fields: Record<string, string | undefined>) => {
     const form = new FormData()
     form.append('file', file)

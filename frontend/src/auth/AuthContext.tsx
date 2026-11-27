@@ -123,4 +123,16 @@ export const Permissions = {
   ApprovalsAct: 'approvals.act',
   ApprovalsMonitor: 'approvals.monitor',
   WorkflowConfigure: 'workflow.configure',
+  LeaveViewAll: 'leave.view.all',
+  LeaveConfigure: 'leave.configure',
+  AnnouncementsManage: 'announcements.manage',
+  ReportsHr: 'reports.hr',
+  ReportsFinance: 'reports.finance',
+  ReportsPayroll: 'reports.payroll',
+  DataExport: 'data.export',
+  NotificationsConfigure: 'notifications.configure',
 } as const
+
+/** Any of these opens the reports page; each report then checks its own permission. */
+// eslint-disable-next-line react-refresh/only-export-components
+export const reportPermissions: string[] = [Permissions.ReportsHr, Permissions.ReportsFinance, Permissions.ReportsPayroll, Permissions.ApprovalsMonitor]

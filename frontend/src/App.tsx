@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
+import { Box, CircularProgress } from '@mui/material'
 import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider, Permissions } from './auth/AuthContext'
+import { AuthProvider, Permissions, reportPermissions } from './auth/AuthContext'
 import { RequireAuth } from './auth/RequireAuth'
 import { AppThemeProvider } from './theme/AppThemeProvider'
 import { PortalLayout } from './layouts/PortalLayout'
@@ -12,9 +13,6 @@ import { DashboardPage } from './pages/DashboardPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { DirectoryPage } from './pages/DirectoryPage'
 import { SecurityPage } from './pages/SecurityPage'
-import { UsersPage } from './pages/admin/UsersPage'
-import { RolesPage } from './pages/admin/RolesPage'
-import { IntegrationDashboardPage } from './pages/admin/IntegrationDashboardPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { LeavePage } from './pages/LeavePage'
 import { ApprovalsPage } from './pages/ApprovalsPage'
@@ -24,7 +22,21 @@ import { DocumentsPage } from './pages/DocumentsPage'
 import { RequestsPage } from './pages/RequestsPage'
 import { AttendancePage } from './pages/AttendancePage'
 import { TrainingPage } from './pages/TrainingPage'
-import { WorkflowsPage } from './pages/admin/WorkflowsPage'
+
+/* Administration pages load on demand, so staff on phones download less. */
+const UsersPage = lazy(() => import('./pages/admin/UsersPage').then((m) => ({ default: m.UsersPage })))
+const RolesPage = lazy(() => import('./pages/admin/RolesPage').then((m) => ({ default: m.RolesPage })))
+const IntegrationDashboardPage = lazy(() => import('./pages/admin/IntegrationDashboardPage').then((m) => ({ default: m.IntegrationDashboardPage })))
+const WorkflowsPage = lazy(() => import('./pages/admin/WorkflowsPage').then((m) => ({ default: m.WorkflowsPage })))
+const NotificationsAdminPage = lazy(() => import('./pages/admin/NotificationsAdminPage').then((m) => ({ default: m.NotificationsAdminPage })))
+const ManagementDashboardPage = lazy(() => import('./pages/ManagementDashboardPage').then((m) => ({ default: m.ManagementDashboardPage })))
+const ReportsPage = lazy(() => import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })))
+const HrEmployeesPage = lazy(() => import('./pages/hr/HrEmployeesPage').then((m) => ({ default: m.HrEmployeesPage })))
+const HrEmployeeDetailPage = lazy(() => import('./pages/hr/HrEmployeesPage').then((m) => ({ default: m.HrEmployeeDetailPage })))
+const OrganizationPage = lazy(() => import('./pages/hr/OrganizationPage').then((m) => ({ default: m.OrganizationPage })))
+const LeaveAdminPage = lazy(() => import('./pages/hr/LeaveAdminPage').then((m) => ({ default: m.LeaveAdminPage })))
+const HrDocumentsPage = lazy(() => import('./pages/hr/HrDocumentsPage').then((m) => ({ default: m.HrDocumentsPage })))
+const AnnouncementsAdminPage = lazy(() => import('./pages/hr/AnnouncementsAdminPage').then((m) => ({ default: m.AnnouncementsAdminPage })))
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000, refetchOnWindowFocus: false } },
@@ -47,6 +59,7 @@ export default function App() {
         <AuthProvider>
           <BrowserRouter>
             <AccountGateRedirect />
+            <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}><CircularProgress aria-label="Loading" /></Box>}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -67,6 +80,15 @@ export default function App() {
                 <Route path="requests/:id" element={<RequireAuth permission={Permissions.RequestsSubmit}><RequestsPage /></RequireAuth>} />
                 <Route path="attendance" element={<RequireAuth permission={Permissions.AttendanceClock}><AttendancePage /></RequireAuth>} />
                 <Route path="training" element={<RequireAuth permission={Permissions.TrainingApply}><TrainingPage /></RequireAuth>} />
+                <Route path="management" element={<RequireAuth permission={Permissions.DashboardManagement}><ManagementDashboardPage /></RequireAuth>} />
+                <Route path="reports" element={<RequireAuth anyOf={reportPermissions}><ReportsPage /></RequireAuth>} />
+                <Route path="hr/employees" element={<RequireAuth permission={Permissions.EmployeesViewAll}><HrEmployeesPage /></RequireAuth>} />
+                <Route path="hr/employees/:id" element={<RequireAuth permission={Permissions.EmployeesViewAll}><HrEmployeeDetailPage /></RequireAuth>} />
+                <Route path="hr/organization" element={<RequireAuth permission={Permissions.EmployeesViewAll}><OrganizationPage /></RequireAuth>} />
+                <Route path="hr/leave" element={<RequireAuth permission={Permissions.LeaveViewAll}><LeaveAdminPage /></RequireAuth>} />
+                <Route path="hr/documents" element={<RequireAuth permission={Permissions.DocumentsManage}><HrDocumentsPage /></RequireAuth>} />
+                <Route path="hr/announcements" element={<RequireAuth permission={Permissions.AnnouncementsManage}><AnnouncementsAdminPage /></RequireAuth>} />
+                <Route path="admin/notifications" element={<RequireAuth permission={Permissions.NotificationsConfigure}><NotificationsAdminPage /></RequireAuth>} />
                 <Route path="admin/payroll" element={<RequireAuth permission={Permissions.PayrollPublish}><PayrollPublishPage /></RequireAuth>} />
                 <Route path="admin/workflows" element={<RequireAuth permission={Permissions.WorkflowConfigure}><WorkflowsPage /></RequireAuth>} />
                 <Route path="admin/users" element={<RequireAuth permission={Permissions.UsersManage}><UsersPage /></RequireAuth>} />
@@ -75,6 +97,7 @@ export default function App() {
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
             </Routes>
+            </Suspense>
           </BrowserRouter>
         </AuthProvider>
       </AppThemeProvider>

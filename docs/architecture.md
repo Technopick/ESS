@@ -1,6 +1,6 @@
 # ESS Portal: system architecture
 
-Status: updated after Phase 2 (accounts, administration, employee pages). Version 0.2, 26 November 2026.
+Status: updated after Phase 5 (HR portal, management dashboard, reports, notifications). Version 0.5, 27 November 2026.
 
 ## 1. Purpose and ground rules
 
@@ -148,6 +148,16 @@ This avoids two competing approval processes. The owner per document type is dec
 * Environments: `appsettings.{Development,Testing,UAT,Production}.json`; secrets only from environment variables or a secret store.
 * Full deployment scripts, backups and CI/CD are Phase 7.
 
+## 10a. Reporting, dashboard and notifications (Phase 5)
+
+* **Reports** are defined in one catalogue (`Ess.Api/Reporting/ReportCatalog.cs`). Each report names its permission (HR, finance, payroll or approvals monitoring) and filters. `ReportRunner` resolves the user's department scope and refuses a department filter outside it. Exports (Excel through ClosedXML, PDF through PDFsharp/MigraDoc, CSV with formula-injection protection) need `data.export`, and every view and export is written to the audit log. Results are capped at 20,000 rows and say so when cut.
+* **Payroll reporting** reads period totals from NAV through `INavPayrollService.GetPeriodTotalsAsync`. It only runs for closed periods and only shows totals per department, so no one sees another employee's pay through a report.
+* **Management dashboard** (`ManagementDashboardService`) is computed from the portal's synced copy of NAV data, filtered by period, department and location within the user's scope, and honours the privacy settings for birthdays and gender.
+* **Power BI readiness**: a `reporting` schema of views without names, pay, bank, ID or contact details, and an `ess_reporting` NOLOGIN role with SELECT on it only (`deploy/sql/reporting-role.sql`).
+* **Notifications**: each event has a built-in wording; HR can override it per channel with placeholders. SMS is opt-in per event (only events with an active SMS template send one), payslip SMS may not contain amounts, and messages that cannot be sent (no gateway, no valid Kenyan number) are recorded as suppressed with the reason. Failed deliveries can be retried from the delivery history.
+* **Organisation data kept in the portal**: department heads and parent departments are not reliably available from NAV, so HR maintains them in the portal for "head of department" approval routing. Contract end and termination dates are separate NAV fields (`Contract_End_Date`, `Termination_Date`), each configurable in the field mapping.
+* **Scheduled jobs**: announcements are published and notified every 10 minutes; contract expiry alerts run daily at 06:15 and go to the line manager and HR, not the employee.
+
 ## 11. Phase status
 
 | Phase | Scope | Status |
@@ -156,7 +166,7 @@ This avoids two competing approval processes. The owner per document type is dec
 | 2 | Auth (MFA, Entra ID), roles admin, employee dashboard, profile sync | Done, except Entra ID sign-in (needs the tenant details) |
 | 3 | Leave, payroll, expenses, requests, documents, attendance, training, workflow engine | Done against the NAV simulator; NAV adapters for overtime and HR requests wait for the customer's objects |
 | 4 | Remaining NAV adapters against the real NAV, approval status sync | Engine done; adapters need the customer's objects |
-| 5 | HR portal, management dashboard, reports, notifications | Integration dashboard and notifications done; next |
+| 5 | HR portal, management dashboard, reports, notifications | Done against the NAV simulator; SMS needs the customer's gateway account |
 | 6 | Security, performance and UAT testing | Not started |
 | 7 | Production deployment package | Docker files only |
 

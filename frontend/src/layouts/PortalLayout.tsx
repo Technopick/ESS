@@ -25,7 +25,15 @@ import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined'
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
 import PublishOutlinedIcon from '@mui/icons-material/PublishOutlined'
-import { Permissions, useAuth } from '../auth/AuthContext'
+import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined'
+import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined'
+import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
+import ApartmentOutlinedIcon from '@mui/icons-material/ApartmentOutlined'
+import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined'
+import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined'
+import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined'
+import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined'
+import { Permissions, reportPermissions, useAuth } from '../auth/AuthContext'
 import { useThemeMode } from '../theme/AppThemeProvider'
 import { NotificationBell } from '../components/NotificationBell'
 
@@ -36,6 +44,8 @@ interface NavItem {
   label: string
   icon: ReactNode
   permission?: string
+  /** Shown when the user holds any of these permissions. */
+  anyOf?: string[]
 }
 
 /** Navigation grouped by portal area (employee, manager, HR, management, administration). Items appear only when built and permitted. */
@@ -63,8 +73,20 @@ const sections: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
+    title: 'Management',
+    items: [
+      { to: '/management', label: 'Dashboard', icon: <InsightsOutlinedIcon />, permission: Permissions.DashboardManagement },
+      { to: '/reports', label: 'Reports', icon: <AssessmentOutlinedIcon />, anyOf: reportPermissions },
+    ],
+  },
+  {
     title: 'HR administration',
     items: [
+      { to: '/hr/employees', label: 'Employees', icon: <PeopleAltOutlinedIcon />, permission: Permissions.EmployeesViewAll },
+      { to: '/hr/organization', label: 'Organisation', icon: <ApartmentOutlinedIcon />, permission: Permissions.EmployeesViewAll },
+      { to: '/hr/leave', label: 'Leave administration', icon: <EventNoteOutlinedIcon />, permission: Permissions.LeaveViewAll },
+      { to: '/hr/documents', label: 'Employee documents', icon: <FolderSharedOutlinedIcon />, permission: Permissions.DocumentsManage },
+      { to: '/hr/announcements', label: 'Announcements', icon: <CampaignOutlinedIcon />, permission: Permissions.AnnouncementsManage },
       { to: '/admin/payroll', label: 'Publish payslips', icon: <PublishOutlinedIcon />, permission: Permissions.PayrollPublish },
       { to: '/admin/workflows', label: 'Approval routes', icon: <AccountTreeOutlinedIcon />, permission: Permissions.WorkflowConfigure },
     ],
@@ -74,6 +96,7 @@ const sections: { title: string; items: NavItem[] }[] = [
     items: [
       { to: '/admin/users', label: 'Users', icon: <ManageAccountsOutlinedIcon />, permission: Permissions.UsersManage },
       { to: '/admin/roles', label: 'Roles', icon: <AdminPanelSettingsOutlinedIcon />, permission: Permissions.UsersManage },
+      { to: '/admin/notifications', label: 'Notifications', icon: <NotificationsActiveOutlinedIcon />, permission: Permissions.NotificationsConfigure },
       { to: '/admin/integration', label: 'NAV integration', icon: <SyncAltIcon />, permission: Permissions.IntegrationView },
     ],
   },
@@ -98,7 +121,7 @@ export function PortalLayout() {
       </Toolbar>
       <Divider />
       {sections.map((s) => {
-        const visible = s.items.filter((i) => !i.permission || can(i.permission))
+        const visible = s.items.filter((i) => (!i.permission || can(i.permission)) && (!i.anyOf || i.anyOf.some((p) => can(p))))
         if (visible.length === 0) return null
         return (
           <List key={s.title} subheader={<ListSubheader disableSticky>{s.title}</ListSubheader>} dense>

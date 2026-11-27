@@ -1,12 +1,12 @@
 # Employee Self-Service portal for Dynamics NAV / Business Central
 
-Enterprise ESS portal that keeps Dynamics NAV/BC as the system of record. Built in phases; Phases 1, 2 and 3 are done.
+Enterprise ESS portal that keeps Dynamics NAV/BC as the system of record. Built in phases; Phases 1, 2, 3 and 5 are done. Phase 4 (the remaining adapters) waits for access to the customer's NAV.
 
 * Architecture: [docs/architecture.md](docs/architecture.md)
 * NAV integration mapping and discovery checklist: [docs/nav-integration-mapping.md](docs/nav-integration-mapping.md)
 * NAV customisations required: [docs/nav-customizations.md](docs/nav-customizations.md)
 
-## What works today (Phases 1 to 3)
+## What works today (Phases 1, 2, 3 and 5)
 
 * ASP.NET Core 8 API with Serilog, API versioning, Swagger, ProblemDetails errors, health checks, rate limiting, security headers, SignalR hub, Hangfire.
 * PostgreSQL schema for all spec §10 entities (EF Core migration `InitialSchema`), soft delete, UTC audit stamps, partial unique indexes.
@@ -21,8 +21,12 @@ Enterprise ESS portal that keeps Dynamics NAV/BC as the system of record. Built 
 * Phase 3 payslips: published periods only, payslip view and print, NAV PDF when available, yearly statutory summary (PAYE, NSSF, SHIF, Housing Levy), encrypted fallback copy, audited HR access with a reason, and HR publishing of closed NAV periods.
 * Phase 3 expenses and documents: multi-line claims with receipts, policy checks, approval by amount, posting to NAV as a claim for finance; encrypted document storage with content checks, optional ClamAV scan, versions, expiry reminders and an access log.
 * Phase 3 HR requests, attendance and training: request types with their own form fields and SLA, HR queue; clock in and out with optional location, corrections and overtime through approval, team view; training catalogue, applications, participants and feedback.
-* Notifications: in-app (live through SignalR) and email, with a bell in the header.
-* Tests: 66 backend tests (unit, end-to-end against PostgreSQL and the NAV simulator, and API tests), 7 frontend tests.
+* Phase 5 HR portal: employee list with filters (department, location, job title, status, contracts ending, no portal account), employee detail with the live NAV profile, balances and activity (every view audited), refresh from NAV, organisation pages with headcounts, department heads and parent departments kept in the portal for approval routing, leave administration (applications monitor, portal-side leave type rules including gender eligibility, public holidays), HR document library, and announcements with targeting, scheduling and notification.
+* Phase 5 management dashboard: headcount, joiners, leavers and turnover, breakdowns by department, location, status and gender, people on leave, contracts ending, celebrations (respecting privacy settings), 12-month trends, training and request statistics, filtered by period, department and location, with Excel and PDF export.
+* Phase 5 reports: 13 reports (directory, headcount, leave utilisation, leave liability, leave applications, contract expiry, HR requests, attendance, training, document expiry, expense claims, pending approvals, payroll summary) with filters and Excel, PDF and CSV export. Department scope is enforced on every report, every view and export is audited, and the payroll summary shows department totals for closed periods only. A read-only `reporting` schema of views and an `ess_reporting` role make the data ready for Power BI.
+* Phase 5 notifications: templates per event and channel with placeholders and preview, optional SMS through Africa's Talking (opt-in per event, no pay figures allowed), delivery history with retry, contract expiry alerts at 60, 30 and 7 days, and NAV integration log export.
+* Notifications: in-app (live through SignalR), email and SMS, with a bell in the header.
+* Tests: 87 backend tests (unit, end-to-end against PostgreSQL and the NAV simulator, and API tests), 10 frontend tests.
 
 Known gaps: overtime and HR requests are not yet sent to NAV, biometric clock import is not built, and the payslip PDF needs NAV's report (otherwise the browser's print is used). These depend on the customer's NAV objects.
 
@@ -57,6 +61,19 @@ Without `ESS_TEST_DB` the end-to-end tests are skipped.
 cp .env.example .env   # fill in secrets
 docker compose up --build
 ```
+
+## Power BI and other BI tools
+
+The `reporting` schema holds views over employees, departments, leave, expenses, HR requests, training, attendance and approvals. They leave out names, salaries, bank and ID details, contact details and document contents; rows carry the NAV employee number so a BI model can join to NAV if the customer decides names belong in it. Run `deploy/sql/reporting-role.sql` once, then create a login that is a member of `ess_reporting` and connect Power BI to PostgreSQL with it:
+
+```sql
+CREATE ROLE powerbi LOGIN PASSWORD '<from your secret store>' IN ROLE ess_reporting;
+```
+
+## SMS and PDF settings
+
+* SMS: set `Sms__Provider` to `AfricasTalking` with `Sms__Username`, `Sms__ApiKey` and optionally `Sms__SenderId` (environment variables or a secret store, never in files). `Log` writes messages to the log for testing. No SMS is sent for an event until HR adds an SMS template for it.
+* PDF export needs a TrueType font. The Docker image installs DejaVu; on Windows Arial is used. `Reporting__FontPath` and `Reporting__BoldFontPath` point at other fonts.
 
 ## Database migrations
 
