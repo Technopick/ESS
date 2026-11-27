@@ -56,6 +56,41 @@ public sealed class NavSyncService
         var sp = scope.ServiceProvider;
         var db = sp.GetRequiredService<EssDbContext>();
 
+        // One sync per company and entity at a time, across every server: the scheduled incremental and nightly full jobs
+        // can start together (for example after a restart), and two runs would both insert the same new employees.
+        await db.Database.OpenConnectionAsync(ct);
+        var lockKey = LockKey(companyId, entity);
+        var waitedSince = _clock.UtcNow;
+        while (!await TryLockAsync(db, lockKey, ct))
+        {
+            if (_clock.UtcNow - waitedSince > TimeSpan.FromMinutes(30))
+                throw new TimeoutException($"Another {entity} sync for this company has been running for over 30 minutes.");
+            await Task.Delay(TimeSpan.FromSeconds(2), ct);
+        }
+        try
+        {
+            return await RunLockedAsync(sp, db, companyId, entity, full, triggeredBy, ct);
+        }
+        finally
+        {
+            await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_unlock({0}, {1})", new object[] { LockNamespace, lockKey }, CancellationToken.None);
+        }
+    }
+
+    private const int LockNamespace = 0x455353; // "ESS"
+
+    private static int LockKey(Guid companyId, string entity)
+    {
+        var h = 2166136261u;
+        foreach (var c in companyId.ToString("N") + ":" + entity) h = (h ^ c) * 16777619u;
+        return unchecked((int)h);
+    }
+
+    private static async Task<bool> TryLockAsync(EssDbContext db, int key, CancellationToken ct) =>
+        await db.Database.SqlQueryRaw<bool>("SELECT pg_try_advisory_lock({0}, {1}) AS \"Value\"", LockNamespace, key).SingleAsync(ct);
+
+    private async Task<NavSyncJob> RunLockedAsync(IServiceProvider sp, EssDbContext db, Guid companyId, string entity, bool full, string triggeredBy, CancellationToken ct)
+    {
         var lastWatermark = full ? null : await db.NavSyncJobs.AsNoTracking()
             .Where(j => j.CompanyId == companyId && j.EntityName == entity && j.Status == SyncJobStatus.Succeeded)
             .OrderByDescending(j => j.StartedAtUtc).Select(j => j.Watermark).FirstOrDefaultAsync(ct);
