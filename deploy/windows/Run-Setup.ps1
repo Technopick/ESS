@@ -8,15 +8,18 @@
 #>
 $ErrorActionPreference = 'Stop'
 $in = @{}
-Get-ChildItem env: | Where-Object Name -like 'ESS_SETUP_*' | ForEach-Object {
-    $in[$_.Name.Substring(10)] = $_.Value
-    Remove-Item "env:$($_.Name)"
-}
-function Sec([string] $v) { if ($v) { ConvertTo-SecureString $v -AsPlainText -Force } else { $null } }
-function Step([string] $m) { Write-Host ''; Write-Host "==> $m" -ForegroundColor Cyan }
-Start-Transcript -Path $in.LOG -Append | Out-Null
 $code = 1
+$transcript = $false
 try {
+    # Copy, then clear. [Environment] is used rather than Remove-Item because an empty variable can be listed by
+    # Get-ChildItem env: yet be "not found" by Remove-Item.
+    foreach ($v in @(Get-ChildItem env: | Where-Object Name -like 'ESS_SETUP_*')) {
+        $in[$v.Name.Substring(10)] = $v.Value
+        [Environment]::SetEnvironmentVariable($v.Name, $null, 'Process')
+    }
+    function Sec([string] $v) { if ($v) { ConvertTo-SecureString $v -AsPlainText -Force } else { $null } }
+    function Step([string] $m) { Write-Host ''; Write-Host "==> $m" -ForegroundColor Cyan }
+    if ($in.LOG) { Start-Transcript -Path $in.LOG -Append | Out-Null; $transcript = $true }
     Get-ChildItem $PSScriptRoot -Filter *.ps1 | Unblock-File
 
     Step 'Installing the IIS features'
@@ -65,7 +68,8 @@ try {
         -AdminPassword (Sec $in.DB_ADMIN_PASSWORD) -AppPassword (Sec $in.DB_PASSWORD)
 
     Step 'Installing the portal'
-    $cs = "Host=$($in.DB_SERVER);Port=$($in.DB_PORT);Database=$($in.DB_NAME);Username=$($in.DB_USER);Password=$($in.DB_PASSWORD)"
+    # Quote the password so characters such as ; or = in it cannot break the connection string.
+    $cs = "Host=$($in.DB_SERVER);Port=$($in.DB_PORT);Database=$($in.DB_NAME);Username=$($in.DB_USER);Password='$($in.DB_PASSWORD -replace "'", "''")'"
     $install = @{
         HostName = $in.HOST; CertificateThumbprint = $in.CERT; DatabaseConnectionString = (Sec $cs)
         Environment = $in.ENVIRONMENT; InstallRoot = $in.INSTALL_ROOT; DataRoot = $in.DATA_ROOT
@@ -90,6 +94,6 @@ try {
     Write-Host ''
     Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
 } finally {
-    Stop-Transcript | Out-Null
+    if ($transcript) { try { Stop-Transcript | Out-Null } catch { } }
 }
 exit $code

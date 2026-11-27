@@ -225,7 +225,13 @@ internal static class Program
             UseShellExecute = false,
             WorkingDirectory = package,
         };
-        void Set(string k, string? v) => psi.Environment["ESS_SETUP_" + k] = v ?? "";
+        // Empty values are left out: Windows treats an empty environment variable as absent, and the script reads a
+        // missing key as $null anyway.
+        void Set(string k, string? v)
+        {
+            if (string.IsNullOrEmpty(v)) psi.Environment.Remove("ESS_SETUP_" + k);
+            else psi.Environment["ESS_SETUP_" + k] = v;
+        }
         Set("LOG", log);
         Set("HOSTING_BUNDLE_URL", HostingBundleUrl);
         Set("ENVIRONMENT", a.Environment);
