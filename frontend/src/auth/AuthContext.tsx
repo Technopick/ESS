@@ -99,6 +99,7 @@ export function useAuth() {
 export const Permissions = {
   IntegrationView: 'integration.nav.view',
   IntegrationOperate: 'integration.nav.operate',
+  IntegrationConfigure: 'integration.nav.configure',
   DashboardManagement: 'dashboard.management',
   EmployeesViewAll: 'employees.view.all',
   ProfileViewOwn: 'profile.view.own',

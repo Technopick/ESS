@@ -31,7 +31,7 @@ public sealed class NavFieldMapper
         return v.ValueKind switch
         {
             JsonValueKind.Null or JsonValueKind.Undefined => null,
-            JsonValueKind.String => NullIfEmpty(v.GetString()),
+            JsonValueKind.String => NullIfEmpty(DecodeOption(v.GetString())),
             _ => v.ToString()
         };
     }
@@ -85,7 +85,22 @@ public sealed class NavFieldMapper
         if (row.TryGetProperty(nav, out value)) return true;
         // OData field names replace spaces/periods with underscores; tolerate both spellings.
         var alt = nav.Replace(' ', '_').Replace('.', '_');
-        return row.TryGetProperty(alt, out value);
+        if (row.TryGetProperty(alt, out value)) return true;
+        // OData v4 (NAV 2015+) carries the record version in the annotation rather than an ETag field.
+        return essField == "VersionToken" && row.TryGetProperty("@odata.etag", out value);
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex EncodedChar = new("_x[0-9A-Fa-f]{4}_", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>
+    /// NAV's OData v4 endpoint writes option (enum) values as XML names: a space becomes "_x0020_" ("Sick_x0020_Leave"),
+    /// and an empty option is "_blank_" or "_x0020_". Turn them back into the captions NAV shows.
+    /// </summary>
+    public static string? DecodeOption(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return value;
+        if (value == "_blank_") return "";
+        return EncodedChar.IsMatch(value) ? System.Xml.XmlConvert.DecodeName(value).Trim() : value;
     }
 
     private static string? NullIfEmpty(string? s) => string.IsNullOrEmpty(s) ? null : s;
