@@ -83,7 +83,16 @@ public sealed class NavSimulatorHandler : HttpMessageHandler
                 _ => throw new InvalidOperationException($"Simulator has no entity set '{service}'.")
             };
             rows = ApplyEqFilters(rows, query);
-            return Json(new Dictionary<string, object?> { ["@odata.context"] = "simulator", ["value"] = rows.ToList() });
+            // Like NAV's OData v4 endpoint: $skip and $top apply to the whole result, $top ends paging (no nextLink),
+            // and each row carries its version in "@odata.etag".
+            var skip = System.Text.RegularExpressions.Regex.Match(query, @"\$skip=(\d+)");
+            var top = System.Text.RegularExpressions.Regex.Match(query, @"\$top=(\d+)");
+            if (skip.Success) rows = rows.Skip(int.Parse(skip.Groups[1].Value));
+            if (top.Success) rows = rows.Take(int.Parse(top.Groups[1].Value));
+            var list = rows.Select(r => r is Dictionary<string, object?> d
+                ? new Dictionary<string, object?>(d) { ["@odata.etag"] = $"W/\"JzQ0O{StableHash(string.Join('|', d.Values))}'\"" }
+                : r).ToList();
+            return Json(new Dictionary<string, object?> { ["@odata.context"] = "simulator", ["value"] = list });
         }
         return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
     }
@@ -109,6 +118,9 @@ public sealed class NavSimulatorHandler : HttpMessageHandler
                 result = _leaveByRef.GetOrAdd(P("externalRef"), _ => $"SIM-LV{Interlocked.Increment(ref _docCounter):D5}");
                 break;
             case "SubmitExpenseClaim":
+                // NAV 2016 (C/AL) receives the lines as XML.
+                try { if (!XElement.Parse(P("linesXml")).Elements("Line").Any()) return Fault("The claim has no lines."); }
+                catch (System.Xml.XmlException) { return Fault("The claim lines could not be read."); }
                 result = _claimsByRef.GetOrAdd(P("externalRef"), _ => $"SIM-EC{Interlocked.Increment(ref _docCounter):D5}");
                 break;
             case "FindLeaveByExternalRef":
@@ -164,6 +176,13 @@ public sealed class NavSimulatorHandler : HttpMessageHandler
             rows = rows.Where(r => r is Dictionary<string, object?> d && d.TryGetValue(field, out var v) && string.Equals(v?.ToString(), value, StringComparison.OrdinalIgnoreCase));
         }
         return rows;
+    }
+
+    private static uint StableHash(string text)
+    {
+        uint h = 2166136261;
+        foreach (var c in text) h = (h ^ c) * 16777619;
+        return h;
     }
 
     private static object Ref(string code, string name) => new Dictionary<string, object?> { ["Code"] = code, ["Name"] = name };

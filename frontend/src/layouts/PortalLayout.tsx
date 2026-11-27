@@ -33,6 +33,7 @@ import EventNoteOutlinedIcon from '@mui/icons-material/EventNoteOutlined'
 import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined'
 import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined'
 import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined'
+import SettingsEthernetOutlinedIcon from '@mui/icons-material/SettingsEthernetOutlined'
 import { Permissions, reportPermissions, useAuth } from '../auth/AuthContext'
 import { useThemeMode } from '../theme/AppThemeProvider'
 import { NotificationBell } from '../components/NotificationBell'
@@ -97,6 +98,7 @@ const sections: { title: string; items: NavItem[] }[] = [
       { to: '/admin/users', label: 'Users', icon: <ManageAccountsOutlinedIcon />, permission: Permissions.UsersManage },
       { to: '/admin/roles', label: 'Roles', icon: <AdminPanelSettingsOutlinedIcon />, permission: Permissions.UsersManage },
       { to: '/admin/notifications', label: 'Notifications', icon: <NotificationsActiveOutlinedIcon />, permission: Permissions.NotificationsConfigure },
+      { to: '/admin/nav-settings', label: 'NAV connection', icon: <SettingsEthernetOutlinedIcon />, permission: Permissions.IntegrationConfigure },
       { to: '/admin/integration', label: 'NAV integration', icon: <SyncAltIcon />, permission: Permissions.IntegrationView },
     ],
   },

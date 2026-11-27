@@ -172,9 +172,9 @@ This avoids two competing approval processes. The owner per document type is dec
 
 ## 12. Open questions for the customer
 
-1. NAV/BC version and build, and whether HR/leave/payroll is standard, a Kenyan payroll add-on, or custom tables (decides every adapter's mapping).
+1. ~~NAV/BC version~~ NAV 2016, standard HR with extensions and custom tables where needed (answered 27 November 2026). Still needed: the custom table names for leave and payroll, and the build number.
 2. Which document types already have approval workflows in NAV (decides workflow ownership).
 3. How departments and positions are modelled (Global Dimension 1, HR add-on tables, or Employee fields).
 4. Whether NAV can render the payslip report as PDF via a codeunit, or the portal should render it.
 5. Authentication on the NAV service tier (Windows, NavUserPassword, or OAuth for BC online), and whether a dedicated service user with a restricted permission set can be created.
-6. Hosting target (Windows/IIS on-premises or containers) and whether the NAV server is reachable from it.
+6. ~~Hosting target~~ Windows/IIS (answered). Still needed: whether the NAV server is reachable from the portal server, and whether the portal faces the internet.
