@@ -24,7 +24,7 @@ Enterprise ESS portal that keeps Dynamics NAV/BC as the system of record. Built 
 * Phase 5 HR portal: employee list with filters (department, location, job title, status, contracts ending, no portal account), employee detail with the live NAV profile, balances and activity (every view audited), refresh from NAV, organisation pages with headcounts, department heads and parent departments kept in the portal for approval routing, leave administration (applications monitor, portal-side leave type rules including gender eligibility, public holidays), HR document library, and announcements with targeting, scheduling and notification.
 * Phase 5 management dashboard: headcount, joiners, leavers and turnover, breakdowns by department, location, status and gender, people on leave, contracts ending, celebrations (respecting privacy settings), 12-month trends, training and request statistics, filtered by period, department and location, with Excel and PDF export.
 * Phase 5 reports: 13 reports (directory, headcount, leave utilisation, leave liability, leave applications, contract expiry, HR requests, attendance, training, document expiry, expense claims, pending approvals, payroll summary) with filters and Excel, PDF and CSV export. Department scope is enforced on every report, every view and export is audited, and the payroll summary shows department totals for closed periods only. A read-only `reporting` schema of views and an `ess_reporting` role make the data ready for Power BI.
-* Phase 5 notifications: templates per event and channel with placeholders and preview, optional SMS through Africa's Talking (opt-in per event, no pay figures allowed), delivery history with retry, contract expiry alerts at 60, 30 and 7 days, and NAV integration log export.
+* Phase 5 notifications: templates per event and channel with placeholders and preview, optional SMS through Mobile Sasa (opt-in per event, no pay figures allowed; Africa's Talking also supported), delivery history with retry, contract expiry alerts at 60, 30 and 7 days, and NAV integration log export.
 * Notifications: in-app (live through SignalR), email and SMS, with a bell in the header.
 * Tests: 87 backend tests (unit, end-to-end against PostgreSQL and the NAV simulator, and API tests), 10 frontend tests.
 
@@ -72,7 +72,7 @@ CREATE ROLE powerbi LOGIN PASSWORD '<from your secret store>' IN ROLE ess_report
 
 ## SMS and PDF settings
 
-* SMS: set `Sms__Provider` to `AfricasTalking` with `Sms__Username`, `Sms__ApiKey` and optionally `Sms__SenderId` (environment variables or a secret store, never in files). `Log` writes messages to the log for testing. No SMS is sent for an event until HR adds an SMS template for it.
+* SMS through Mobile Sasa: set `Sms__Provider` to `MobileSasa`, `Sms__ApiKey` to the API token from the Mobile Sasa portal (starts with `mbs_`) and `Sms__SenderId` to the approved sender name, as environment variables or in a secret store, never in files. Numbers are sent as 2547XXXXXXXX; set `Sms__PhoneFormat` to `Local` for 07XXXXXXXX. `AfricasTalking` (with `Sms__Username`) is also supported, and `Log` writes messages to the log for testing. No SMS is sent for an event until HR adds an SMS template for it.
 * PDF export needs a TrueType font. The Docker image installs DejaVu; on Windows Arial is used. `Reporting__FontPath` and `Reporting__BoldFontPath` point at other fonts.
 
 ## Database migrations
