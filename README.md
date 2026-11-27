@@ -92,6 +92,7 @@ CREATE ROLE powerbi LOGIN PASSWORD '<from your secret store>' IN ROLE ess_report
 dotnet tool install --global dotnet-ef --version 8.0.11
 cd backend
 dotnet ef migrations script --idempotent -p src/Ess.Infrastructure -s src/Ess.Infrastructure -o ../deploy/sql/ess-schema.sql
+sed -i '1s/^\xEF\xBB\xBF//' ../deploy/sql/ess-schema.sql   # psql on Windows rejects a byte-order mark
 ```
 
 Production applies the idempotent script (or sets `Database__MigrateOnStartup=true` for a controlled first start); tables are never created by hand.

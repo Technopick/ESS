@@ -74,6 +74,10 @@ Running the same or a newer setup file again **updates** the portal: the databas
    ```
    Copy `C:\EssData\backups` off the server every day (another site or cloud storage). Test a restore at least every quarter.
 
+### Virus scanning of uploads
+
+Uploaded documents and receipts are scanned before they are stored. On Windows the portal uses **Microsoft Defender** (built into Windows Server 2016 and later) automatically, so no extra software is needed. To use a ClamAV server instead, set `Storage__ClamAv__Host` on the application pool. If neither is available, production refuses uploads rather than storing unscanned files.
+
 ## 4. Where settings live
 
 Everything environment-specific is an environment variable on the application pool, set by the install script (IIS Manager, Application Pools, EssPortal, Advanced Settings, Environment Variables). `applicationHost.config` is readable by Administrators and SYSTEM only. Nothing secret is in the site folder, `web.config` or the package.

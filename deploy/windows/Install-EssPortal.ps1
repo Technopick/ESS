@@ -198,14 +198,42 @@ $sm = Get-IISServerManager
 if ($sm.ApplicationPools[$AppPoolName].State -ne 'Started') { [void] $sm.ApplicationPools[$AppPoolName].Start() } else { [void] $sm.ApplicationPools[$AppPoolName].Recycle() }
 if ($sm.Sites[$SiteName].State -ne 'Started') { [void] $sm.Sites[$SiteName].Start() }
 
+# Readiness check. Windows PowerShell 5.1 defaults to old TLS versions, and a self-signed certificate or a host name
+# that DNS does not resolve yet on this server would make the check fail although the portal is fine, so: TLS 1.2,
+# certificate errors ignored for this check only, and a fallback through the loopback address with SNI-free HTTP.
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+$savedCallback = [Net.ServicePointManager]::ServerCertificateValidationCallback
+[Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 $url = "https://${HostName}:$HttpsPort/health/ready"
-for ($i = 0; $i -lt 30; $i++) {
-    try {
-        $r = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 10
-        if ($r.StatusCode -eq 200) { Write-Host "The portal is running: https://$HostName" -ForegroundColor Green; break }
-    } catch { Start-Sleep -Seconds 5 }
-    if ($i -eq 29) { Write-Warning "The readiness check at $url did not pass. Check $($folders.logs) and the Windows Application event log." }
-}
+$ready = $false
+try {
+    for ($i = 0; $i -lt 30 -and -not $ready; $i++) {
+        try {
+            $r = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 10
+            $ready = $r.StatusCode -eq 200
+        } catch {
+            if ($_.Exception.Message -match 'remote name could not be resolved') {
+                # DNS does not know the host name on this server yet: ask IIS through the plain-HTTP binding instead.
+                # HttpWebRequest is used because Invoke-WebRequest in Windows PowerShell 5.1 cannot set the Host header.
+                $req = [Net.HttpWebRequest]::Create('http://127.0.0.1/health/ready')
+                $req.Host = $HostName
+                $req.AllowAutoRedirect = $false
+                $req.Timeout = 10000
+                $resp = $null
+                try { $resp = $req.GetResponse() } catch [Net.WebException] { $resp = $_.Exception.Response } catch { }
+                if ($resp) {
+                    $status = [int]$resp.StatusCode
+                    $resp.Close()
+                    $ready = $status -in 200, 301, 302, 307, 308   # 3xx: the app answered with its redirect to HTTPS
+                }
+                if ($ready) { Write-Warning "$HostName does not resolve on this server yet. Add it to DNS (or the hosts file) so users can reach the portal." }
+            }
+        }
+        if (-not $ready) { Start-Sleep -Seconds 5 }
+    }
+} finally { [Net.ServicePointManager]::ServerCertificateValidationCallback = $savedCallback }
+if ($ready) { Write-Host "The portal is running: https://$HostName" -ForegroundColor Green }
+else { Write-Warning "The readiness check at $url did not pass. Check $($folders.logs) and the Windows Application event log." }
 if ($BootstrapAdminUserName) {
     Write-Warning 'Sign in as the bootstrap administrator, then re-run this script without -BootstrapAdminUserName/-BootstrapAdminPassword to remove them.'
 } else {

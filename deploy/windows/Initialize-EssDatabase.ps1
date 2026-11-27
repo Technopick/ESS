@@ -41,11 +41,14 @@ foreach ($f in 'ess-schema.sql', 'reporting-role.sql') { if (-not (Test-Path (Jo
 
 function Invoke-Psql([string] $User, [securestring] $Password, [string] $Database, [string] $Sql, [string] $File) {
     $env:PGPASSWORD = ConvertFrom-Secure $Password
+    # psql on Windows defaults to the console code page (for example WIN1252); the scripts are UTF-8.
+    $env:PGCLIENTENCODING = 'UTF8'
     try {
-        $psqlArgs = @('-h', $Server, '-p', $Port, '-U', $User, '-d', $Database, '-v', 'ON_ERROR_STOP=1', '-q', '-X')
+        # -w: never prompt for a password (a wrong one must fail, not hang the setup).
+        $psqlArgs = @('-h', $Server, '-p', $Port, '-U', $User, '-d', $Database, '-v', 'ON_ERROR_STOP=1', '-q', '-X', '-w')
         if ($File) { & $PsqlPath @psqlArgs -f $File } else { $Sql | & $PsqlPath @psqlArgs }
         if ($LASTEXITCODE -ne 0) { throw "psql failed (exit code $LASTEXITCODE)." }
-    } finally { Remove-Item Env:\PGPASSWORD -ErrorAction SilentlyContinue }
+    } finally { Remove-Item Env:\PGPASSWORD, Env:\PGCLIENTENCODING -ErrorAction SilentlyContinue }
 }
 
 $appPwd = (ConvertFrom-Secure $AppPassword).Replace("'", "''")

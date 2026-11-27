@@ -74,6 +74,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Check the SQL scripts have no byte-order mark (psql on Windows rejects it)
+        shell: pwsh
+        run: |
+          $bad = Get-ChildItem deploy/sql -Filter *.sql | Where-Object { $b = [IO.File]::ReadAllBytes($_.FullName); $b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF }
+          foreach ($f in $bad) { Write-Host "::error file=$($f.FullName)::UTF-8 byte-order mark; regenerate with the README command (it strips it)." }
+          if ($bad) { exit 1 }
       - name: Check the deployment scripts parse
         shell: pwsh
         run: |

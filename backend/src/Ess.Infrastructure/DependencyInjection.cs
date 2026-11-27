@@ -57,7 +57,20 @@ public static class DependencyInjection
         services.AddScoped<Ess.Application.Notifications.INotificationService, Notifications.NotificationService>();
         services.AddScoped<Ess.Application.Workflow.IWorkflowEngine, Workflow.WorkflowEngine>();
         services.AddSingleton<Ess.Application.Documents.IFileStorage, Storage.EncryptedFileStorage>();
-        services.AddSingleton<Ess.Application.Documents.IMalwareScanner, Storage.ClamAvScanner>();
+        // ClamAV when configured; otherwise Microsoft Defender on Windows (Storage:Scanner = "ClamAv" or "Defender" forces one).
+        services.AddSingleton<Ess.Application.Documents.IMalwareScanner>(sp =>
+        {
+            var choice = config["Storage:Scanner"];
+            var defender = Storage.DefenderScanner.Locate();
+            var useDefender = defender is not null && (string.Equals(choice, "Defender", StringComparison.OrdinalIgnoreCase)
+                              || (string.IsNullOrEmpty(choice) && string.IsNullOrWhiteSpace(config["Storage:ClamAv:Host"])));
+            if (useDefender)
+            {
+                var root = config["Storage:RootPath"] ?? Path.Combine(AppContext.BaseDirectory, "storage");
+                return new Storage.DefenderScanner(defender!, Path.Combine(root, ".scan"), sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Storage.DefenderScanner>>());
+            }
+            return ActivatorUtilities.CreateInstance<Storage.ClamAvScanner>(sp);
+        });
         services.Configure<Email.SmtpOptions>(config.GetSection(Email.SmtpOptions.Section));
         services.AddSingleton<IEmailSender, Email.SmtpEmailSender>();
         services.Configure<Sms.SmsOptions>(config.GetSection(Sms.SmsOptions.Section));

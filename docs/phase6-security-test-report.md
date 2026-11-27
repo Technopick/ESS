@@ -53,7 +53,7 @@ Earlier phases' tests also cover: the same answer for unknown users and wrong pa
 
 1. **Independent penetration test** of the installed UAT site (IIS, TLS, network paths to NAV and PostgreSQL) before go-live.
 2. **MFA coverage**: by default MFA is enforced for administrators, the HR manager and the finance manager. Consider adding HR officers and line managers (`Security:RequireMfaForRoles`).
-3. **Malware scanning**: production refuses unscanned uploads unless `Storage:AllowUnscanned` is set. Connect the client's antivirus scanner before go-live.
+3. **Malware scanning**: uploads are scanned with Microsoft Defender on Windows (or ClamAV if configured), and production refuses uploads when no scanner works. Keep Defender's signatures updated.
 4. **Swagger** is enabled in the UAT configuration for testing and disabled in production. Keep the UAT site on the internal network only.
 5. **NAV web services** should use SSL where the NAV 2016 service tier supports it, and the NAV service account should have only the permissions listed in [nav-customizations.md](nav-customizations.md).
 6. **Phishing** remains the main account-takeover route; brief staff at launch.

@@ -51,7 +51,7 @@ $secure = Get-Content $PasswordFile | ConvertTo-SecureString
 $b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
 try { $env:PGPASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b) }
 try {
-    & $PgDumpPath -h $Server -p $Port -U $User -d $DatabaseName -Fc -Z 6 -f (Join-Path $target 'ess.dump')
+    & $PgDumpPath -w -h $Server -p $Port -U $User -d $DatabaseName -Fc -Z 6 -f (Join-Path $target 'ess.dump')
     if ($LASTEXITCODE -ne 0) { throw "pg_dump failed (exit code $LASTEXITCODE)." }
 } finally { Remove-Item Env:\PGPASSWORD -ErrorAction SilentlyContinue }
 
