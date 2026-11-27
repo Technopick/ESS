@@ -146,7 +146,7 @@ This avoids two competing approval processes. The owner per document type is dec
 * **Windows Server**: IIS (ASP.NET Core Module) for the API and static frontend, or the API as a Windows Service (`UseWindowsService`). PostgreSQL on Windows or a separate server.
 * **Linux / containers**: `docker-compose.yml` (PostgreSQL, API, nginx serving the SPA and proxying `/api` and `/hubs`).
 * Environments: `appsettings.{Development,Testing,UAT,Production}.json`; secrets only from environment variables or a secret store.
-* Full deployment scripts, backups and CI/CD are Phase 7.
+* Windows/IIS package (the customer's target): `deploy/windows` and [deployment-windows-iis.md](deployment-windows-iis.md). The API serves the React app, so IIS needs one site; data-protection keys are persisted and protected with a certificate (or machine DPAPI); backups cover the database, documents and keys. CI (GitHub Actions) tests both halves and builds the package.
 
 ## 10a. Reporting, dashboard and notifications (Phase 5)
 
@@ -168,7 +168,7 @@ This avoids two competing approval processes. The owner per document type is dec
 | 4 | Remaining NAV adapters against the real NAV, approval status sync | Engine done; adapters need the customer's objects |
 | 5 | HR portal, management dashboard, reports, notifications | Done against the NAV simulator; SMS needs the customer's gateway account |
 | 6 | Security, performance and UAT testing | Not started |
-| 7 | Production deployment package | Docker files only |
+| 7 | Production deployment package | Windows/IIS package, backups and CI done; final hardening after UAT |
 
 ## 12. Open questions for the customer
 

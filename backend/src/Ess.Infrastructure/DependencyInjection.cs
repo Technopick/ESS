@@ -27,7 +27,29 @@ public static class DependencyInjection
             .UseSnakeCaseNamingConvention()
             .AddInterceptors(sp.GetRequiredService<AuditStampInterceptor>()));
 
-        services.AddDataProtection().SetApplicationName("Ess.Portal");
+        // Keys protect stored NAV credentials, bank details and every document, so they must survive restarts and be shared
+        // by all servers: DataProtection:KeysPath points at a persistent folder (on Windows encrypted with machine DPAPI).
+        var dp = services.AddDataProtection().SetApplicationName("Ess.Portal");
+        var keysPath = config["DataProtection:KeysPath"];
+        if (!string.IsNullOrWhiteSpace(keysPath))
+        {
+            dp.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+            // A certificate (LocalMachine\My) lets the keys be restored on another server, which disaster recovery needs;
+            // machine DPAPI ties them to this server.
+            var thumbprint = config["DataProtection:CertificateThumbprint"];
+            if (!string.IsNullOrWhiteSpace(thumbprint))
+            {
+                using var store = new System.Security.Cryptography.X509Certificates.X509Store(
+                    System.Security.Cryptography.X509Certificates.StoreName.My, System.Security.Cryptography.X509Certificates.StoreLocation.LocalMachine);
+                store.Open(System.Security.Cryptography.X509Certificates.OpenFlags.ReadOnly);
+                var cert = store.Certificates.Find(System.Security.Cryptography.X509Certificates.X509FindType.FindByThumbprint, thumbprint.Replace(" ", ""), false)
+                    .OfType<System.Security.Cryptography.X509Certificates.X509Certificate2>().FirstOrDefault()
+                    ?? throw new InvalidOperationException("DataProtection:CertificateThumbprint does not match a certificate in LocalMachine\\My.");
+                dp.ProtectKeysWithCertificate(cert);
+            }
+            else if (OperatingSystem.IsWindows() && config.GetValue("DataProtection:ProtectWithDpapi", true))
+                dp.ProtectKeysWithDpapi(protectToLocalMachine: true);
+        }
         services.AddSingleton<ISecretProtector, DataProtectionSecretProtector>();
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IReferenceGenerator, ReferenceGenerator>();

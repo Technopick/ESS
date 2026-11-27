@@ -178,8 +178,29 @@ try
         h["X-Frame-Options"] = "DENY";
         h["Referrer-Policy"] = "no-referrer";
         h["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(self)";
+        if (!ctx.Request.Path.StartsWithSegments("/swagger") && !ctx.Request.Path.StartsWithSegments("/admin/jobs"))
+            h["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' wss:; frame-ancestors 'none'";
         await next();
     });
+    // Single-site hosting (Windows/IIS): when the built frontend is in wwwroot the API serves it too, so IIS needs one site.
+    // Unknown /api, /hubs, /health and /admin/jobs paths still return 404 rather than the app shell.
+    var serveSpa = File.Exists(Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "index.html"));
+    if (serveSpa)
+    {
+        app.UseDefaultFiles();
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            OnPrepareResponse = c =>
+            {
+                var path = c.Context.Request.Path.Value ?? "";
+                c.Context.Response.Headers.CacheControl = path.StartsWith("/assets/", StringComparison.OrdinalIgnoreCase)
+                    ? "public, max-age=31536000, immutable"
+                    : "no-cache";
+            }
+        });
+    }
+    // Routing after static files, so files are served before the app-shell fallback endpoint is chosen.
+    app.UseRouting();
     if (config.GetValue("Swagger:Enabled", !env.IsProduction()))
     {
         app.UseSwagger();
@@ -193,6 +214,10 @@ try
 
     app.MapControllers();
     app.MapHub<NotificationsHub>("/hubs/notifications");
+    if (serveSpa)
+        app.MapFallbackToFile("{*path:regex(^(?!api/|hubs/|health/|admin/jobs|swagger).*$)}", "index.html",
+            new StaticFileOptions { OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = "no-cache" }).AllowAnonymous();
+
     app.MapHealthChecks("/health/live", new() { Predicate = _ => false }).AllowAnonymous();
     app.MapHealthChecks("/health/ready", new() { Predicate = c => c.Tags.Contains("ready") }).AllowAnonymous();
     app.MapHangfireDashboard("/admin/jobs", new DashboardOptions { Authorization = new[] { new HangfireDashboardAuthorization() } });

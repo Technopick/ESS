@@ -93,6 +93,26 @@ public sealed class NavEngineEndToEndTests : IAsyncLifetime
     }
 
     [SkippableFact]
+    public async Task Concurrent_syncs_of_the_same_entity_do_not_duplicate_employees()
+    {
+        Skip.If(BaseCs is null, "ESS_TEST_DB not set");
+        var sync = _sp.GetRequiredService<NavSyncService>();
+        foreach (var e in new[] { "Department", "Position", "Location" })
+            await sync.SyncAsync(_companyId, e, full: true, "test", default);
+
+        // The scheduled incremental and the nightly full sync starting together (e.g. after a restart) used to race.
+        var jobs = await Task.WhenAll(
+            sync.SyncAsync(_companyId, "Employee", full: true, "schedule", default),
+            sync.SyncAsync(_companyId, "Employee", full: false, "schedule", default),
+            sync.SyncAsync(_companyId, "Employee", full: true, "manual", default));
+        jobs.Should().OnlyContain(j => j.Status == SyncJobStatus.Succeeded);
+
+        using var scope = _sp.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<EssDbContext>();
+        (await db.Employees.CountAsync(e => e.CompanyId == _companyId)).Should().Be(6);
+    }
+
+    [SkippableFact]
     public async Task Leave_submission_is_only_posted_after_nav_confirms()
     {
         Skip.If(BaseCs is null, "ESS_TEST_DB not set");

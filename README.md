@@ -55,6 +55,10 @@ cd frontend && npm test
 
 Without `ESS_TEST_DB` the end-to-end tests are skipped.
 
+## Windows Server and IIS (customer target)
+
+`deploy/windows` builds and installs the production package: one IIS site that serves both the API and the React app, an always-running application pool for background jobs, HTTPS, settings and secrets as application-pool environment variables, PostgreSQL set-up, nightly backups and updates with rollback. Follow [docs/deployment-windows-iis.md](docs/deployment-windows-iis.md). GitHub Actions builds the package on every change to `main`.
+
 ## Containers
 
 ```bash
