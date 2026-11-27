@@ -45,6 +45,12 @@ try
     builder.Services.AddScoped<Ess.Api.Services.PayrollService>();
     builder.Services.AddScoped<Ess.Api.Services.DocumentService>();
     builder.Services.AddScoped<Ess.Api.Services.ExpenseService>();
+    builder.Services.AddScoped<Ess.Api.Reporting.ReportRunner>();
+    builder.Services.AddScoped<Ess.Api.Services.ManagementDashboardService>();
+    builder.Services.AddScoped<Ess.Api.Services.AnnouncementService>();
+    builder.Services.AddScoped<Ess.Api.Services.HrAlertService>();
+    Ess.Api.Reporting.PortalFontResolver.ConfiguredRegularPath = config["Reporting:FontPath"];
+    Ess.Api.Reporting.PortalFontResolver.ConfiguredBoldPath = config["Reporting:BoldFontPath"];
     builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.ExpenseWorkflowHandler>();
     builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.HrRequestWorkflowHandler>();
     builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.AttendanceWorkflowHandler>();
@@ -202,6 +208,8 @@ try
         jobs.AddOrUpdate<Ess.Api.Services.DocumentService>("documents-expiry", s => s.NotifyExpiringAsync(CancellationToken.None), "0 6 * * *");
         jobs.AddOrUpdate<Ess.Api.Services.ExpenseService>("expense-nav-status", s => s.MirrorNavStatusesAsync(CancellationToken.None), "*/30 * * * *");
         jobs.AddOrUpdate<Ess.Api.Services.LeaveService>("leave-nav-status", s => s.MirrorNavStatusesAsync(CancellationToken.None), "*/10 * * * *");
+        jobs.AddOrUpdate<Ess.Api.Services.AnnouncementService>("announcements-publish", s => s.NotifyDueAsync(CancellationToken.None), "*/10 * * * *");
+        jobs.AddOrUpdate<Ess.Api.Services.HrAlertService>("contracts-expiry", s => s.NotifyContractExpiriesAsync(CancellationToken.None), "15 6 * * *");
     }
 
     app.Run();

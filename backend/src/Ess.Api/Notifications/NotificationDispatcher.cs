@@ -50,6 +50,7 @@ public sealed class NotificationDispatcher : BackgroundService
         using var scope = _scopes.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EssDbContext>();
         var email = scope.ServiceProvider.GetRequiredService<IEmailSender>();
+        var sms = scope.ServiceProvider.GetRequiredService<ISmsSender>();
         var baseUrl = (_config["App:PublicUrl"] ?? "").TrimEnd('/');
         var now = DateTime.UtcNow;
 
@@ -64,6 +65,12 @@ public sealed class NotificationDispatcher : BackgroundService
 
             var userIds = batch.Select(n => n.RecipientUserId).Distinct().ToList();
             var users = await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, ct);
+            var smsUsers = batch.Where(n => n.Channel == NotificationChannel.Sms).Select(n => n.RecipientUserId).Distinct().ToList();
+            var phones = smsUsers.Count == 0 ? new Dictionary<Guid, string?>() : await (from m in db.EmployeeMappings.AsNoTracking()
+                                                                                       join e in db.Employees on m.EmployeeId equals e.Id
+                                                                                       where smsUsers.Contains(m.UserId)
+                                                                                       select new { m.UserId, e.MobilePhone }).GroupBy(x => x.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.Select(x => x.MobilePhone).FirstOrDefault(p => p != null), ct);
 
             foreach (var n in batch)
             {
@@ -88,9 +95,20 @@ public sealed class NotificationDispatcher : BackgroundService
                             $"<p>{WebUtility.HtmlEncode(n.Body)}</p>{link}", n.Body), ct);
                         n.Status = DeliveryStatus.Sent;
                     }
-                    else n.Status = DeliveryStatus.Suppressed; // SMS/WhatsApp providers are configured in a later phase
+                    else if (n.Channel == NotificationChannel.Sms)
+                    {
+                        var phone = PhoneNumbers.ToE164(phones.GetValueOrDefault(n.RecipientUserId));
+                        if (!sms.IsConfigured) { n.Status = DeliveryStatus.Suppressed; n.LastError = "No SMS gateway is configured."; }
+                        else if (phone is null) { n.Status = DeliveryStatus.Suppressed; n.LastError = "No valid mobile number in NAV."; }
+                        else
+                        {
+                            n.ProviderMessageId = await sms.SendAsync(new SmsMessage(phone, n.Body), ct);
+                            n.Status = DeliveryStatus.Sent;
+                        }
+                    }
+                    else n.Status = DeliveryStatus.Suppressed; // WhatsApp Business needs a Meta-approved account; not configured
                     n.SentAtUtc = DateTime.UtcNow;
-                    n.LastError = null;
+                    if (n.Status != DeliveryStatus.Suppressed) n.LastError = null;
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {

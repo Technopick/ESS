@@ -87,6 +87,9 @@ public sealed class LeaveService
         var days = await CountDaysAsync(employee.CompanyId, type, input.StartDate, input.EndDate, input.StartHalfDay, input.EndHalfDay, ct);
         if (days <= 0) errors.Add("These dates contain no working days.");
         if (type.MaxDaysPerApplication is { } max && days > max) errors.Add($"{type.Name} allows at most {max} days per application.");
+        if (!string.IsNullOrWhiteSpace(type.EligibleGender) && !string.IsNullOrWhiteSpace(employee.Gender)
+            && !string.Equals(type.EligibleGender.Trim(), employee.Gender.Trim(), StringComparison.OrdinalIgnoreCase))
+            errors.Add($"{type.Name} is not available to you according to your NAV record. Contact HR if this is wrong.");
 
         var overlapping = await _db.LeaveApplications.AsNoTracking()
             .Where(a => a.EmployeeId == employee.Id && a.Id != excludeApplicationId && Active.Contains(a.Status)

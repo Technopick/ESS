@@ -38,6 +38,8 @@ public static class DependencyInjection
         services.AddSingleton<Ess.Application.Documents.IMalwareScanner, Storage.ClamAvScanner>();
         services.Configure<Email.SmtpOptions>(config.GetSection(Email.SmtpOptions.Section));
         services.AddSingleton<IEmailSender, Email.SmtpEmailSender>();
+        services.Configure<Sms.SmsOptions>(config.GetSection(Sms.SmsOptions.Section));
+        services.AddHttpClient<ISmsSender, Sms.ConfigurableSmsSender>(c => c.Timeout = TimeSpan.FromSeconds(20));
         return services;
     }
 }

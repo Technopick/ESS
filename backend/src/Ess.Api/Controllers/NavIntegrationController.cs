@@ -80,6 +80,32 @@ public sealed class NavIntegrationController : ControllerBase
         return await PagedResult<NavSyncLog>.CreateAsync(q.OrderByDescending(l => l.OccurredAtUtc), page, pageSize, ct);
     }
 
+    /// <summary>Exports integration call logs (already masked) for a period, up to 50,000 rows.</summary>
+    [HttpGet("logs/export")]
+    [HasPermission(Permissions.IntegrationView)]
+    public async Task<IActionResult> ExportLogs([FromQuery] bool? success, [FromQuery] string? operation, [FromQuery] DateTime? fromUtc, [FromQuery] DateTime? toUtc,
+        [FromServices] Ess.Api.Reporting.ReportRunner runner, [FromQuery] Ess.Api.Reporting.ExportFormat format = Ess.Api.Reporting.ExportFormat.Csv, CancellationToken ct = default)
+    {
+        var start = fromUtc ?? DateTime.UtcNow.AddDays(-7);
+        var q = _db.NavSyncLogs.AsNoTracking().Where(l => l.OccurredAtUtc >= start);
+        if (toUtc is not null) q = q.Where(l => l.OccurredAtUtc < toUtc);
+        if (success is not null) q = q.Where(l => l.Success == success);
+        if (!string.IsNullOrWhiteSpace(operation)) q = q.Where(l => l.Operation == operation);
+        var rows = await q.OrderByDescending(l => l.OccurredAtUtc).Take(50_000)
+            .Select(l => new object?[] { l.OccurredAtUtc.AddHours(runner.Offset), l.Operation, l.Protocol, l.HttpMethod, l.Endpoint, l.StatusCode, l.Success, l.DurationMs, l.Error, l.CorrelationId })
+            .ToListAsync(ct);
+        var table = new Ess.Api.Reporting.ReportTable("NAV integration log", new Ess.Api.Reporting.ReportColumn[]
+        {
+            new("at", "Time", Ess.Api.Reporting.ReportColumnType.DateTime), new("op", "Operation"), new("protocol", "Protocol"), new("method", "Method"), new("endpoint", "Endpoint"),
+            new("status", "HTTP status", Ess.Api.Reporting.ReportColumnType.Number), new("ok", "Succeeded"), new("ms", "Duration (ms)", Ess.Api.Reporting.ReportColumnType.Number),
+            new("error", "Error"), new("corr", "Correlation id")
+        }, rows.Select(r => { r[7] = (decimal)(long)r[7]!; if (r[5] is int i) r[5] = (decimal)i; return r; }).ToList(),
+            new List<KeyValuePair<string, string>> { new("From (UTC)", start.ToString("u")) }, "Request and response bodies are not exported.");
+        var (content, type, ext) = Ess.Api.Reporting.ReportExporter.Export(table, format, await runner.GeneratedByAsync(ct), runner.LocalNow);
+        await _audit.WriteAsync("nav.logs.exported", null, null, new { start, toUtc, success, operation, rows = rows.Count, format = format.ToString() }, ct: ct);
+        return File(content, type, $"nav-integration-log-{runner.LocalNow:yyyyMMdd-HHmm}.{ext}");
+    }
+
     public sealed record QueueItemView(Guid Id, string Operation, string EntityType, Guid EntityId, string IdempotencyKey, QueueItemStatus Status,
         int Attempts, int MaxAttempts, DateTime CreatedAtUtc, DateTime NextAttemptAtUtc, DateTime? CompletedAtUtc, string? NavDocumentNo,
         string? LastError, string? LastErrorCategory);

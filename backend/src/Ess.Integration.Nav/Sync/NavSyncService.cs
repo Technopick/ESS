@@ -142,6 +142,8 @@ public sealed class NavSyncService
                     e.Status = MapStatus(r.Status);
                     e.EmploymentDate = r.EmploymentDate;
                     e.ContractEndDate = r.ContractEndDate;
+                    e.TerminationDate = r.TerminationDate;
+                    e.Gender = r.Gender;
                     e.BirthDate = r.BirthDate;
                     e.NavVersionToken = r.VersionToken;
                     e.LastSyncedAtUtc = _clock.UtcNow;

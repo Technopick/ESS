@@ -39,6 +39,8 @@ public interface INavPayrollService
     Task<NavResult<NavPayslip?>> GetPayslipAsync(Guid companyId, string employeeNo, string periodCode, CancellationToken ct);
     /// <summary>NAV-rendered payslip PDF, where the NAV report is exposed (preferred over portal rendering).</summary>
     Task<NavResult<byte[]?>> GetPayslipPdfAsync(Guid companyId, string employeeNo, string periodCode, CancellationToken ct);
+    /// <summary>Every employee's payslip totals and statutory lines for one period, for authorised payroll reports.</summary>
+    Task<NavResult<IReadOnlyList<NavPayslipTotals>>> GetPeriodTotalsAsync(Guid companyId, string periodCode, CancellationToken ct);
 }
 
 public interface INavExpenseService

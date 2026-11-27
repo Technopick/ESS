@@ -32,8 +32,8 @@ public sealed class NotificationService : INotificationService
                 RecipientUserId = r.RecipientUserId,
                 EventCode = r.EventCode,
                 Channel = channel,
-                Subject = t?.Subject?.Replace("{subject}", r.Subject) ?? r.Subject,
-                Body = t?.Body.Replace("{body}", r.Body).Replace("{subject}", r.Subject) ?? r.Body,
+                Subject = t?.Subject is null ? r.Subject : Render(t.Subject, r),
+                Body = t is null ? r.Body : Render(t.Body, r),
                 LinkUrl = r.LinkUrl,
                 Status = DeliveryStatus.Pending,
                 NextAttemptAtUtc = _clock.UtcNow
@@ -42,5 +42,16 @@ public sealed class NotificationService : INotificationService
 
         Add(NotificationChannel.InApp);
         if (r.Email) Add(NotificationChannel.Email);
+        // SMS is opt-in per event: it is sent only when HR has created an active SMS template for the event.
+        if (templates.Any(t => t.Channel == NotificationChannel.Sms)) Add(NotificationChannel.Sms);
+    }
+
+    /// <summary>Fills {subject}, {body}, {link} and any extra values. Unknown placeholders are left as they are so mistakes are visible in a preview.</summary>
+    public static string Render(string template, NotificationRequest r)
+    {
+        var s = template.Replace("{subject}", r.Subject).Replace("{body}", r.Body).Replace("{link}", r.LinkUrl ?? "");
+        if (r.Values is not null)
+            foreach (var (k, v) in r.Values) s = s.Replace("{" + k + "}", v);
+        return s;
     }
 }

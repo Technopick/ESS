@@ -27,7 +27,9 @@ public sealed class NavEmployeeAdapter : NavAdapterBase, INavEmployeeService
         // Standard NAV has no department field on Employee; most installs use Global Dimension 1 (or an HR add-on field).
         ["DepartmentCode"] = "Global_Dimension_1_Code", ["LocationCode"] = "Global_Dimension_2_Code",
         ["ManagerNo"] = "Manager_No", ["CompanyEmail"] = "Company_E_Mail", ["MobilePhone"] = "Mobile_Phone_No",
-        ["Status"] = "Status", ["EmploymentDate"] = "Employment_Date", ["ContractEndDate"] = "Termination_Date",
+        ["Status"] = "Status", ["EmploymentDate"] = "Employment_Date", ["TerminationDate"] = "Termination_Date",
+        // Standard NAV has no contract end date; Kenyan HR add-ons usually add one. Re-map in the field mapping screen.
+        ["ContractEndDate"] = "Contract_End_Date",
         ["BirthDate"] = "Birth_Date", ["Gender"] = "Gender", ["LastModified"] = "Last_Date_Modified", ["VersionToken"] = "ETag"
     };
 
@@ -37,7 +39,7 @@ public sealed class NavEmployeeAdapter : NavAdapterBase, INavEmployeeService
         ["No"] = "number", ["FirstName"] = "givenName", ["MiddleName"] = "middleName", ["LastName"] = "surname",
         ["JobTitle"] = "jobTitle", ["PositionCode"] = "jobTitle", ["DepartmentCode"] = "departmentCode", ["LocationCode"] = "locationCode",
         ["ManagerNo"] = "managerNumber", ["CompanyEmail"] = "email", ["MobilePhone"] = "mobilePhone", ["Status"] = "status",
-        ["EmploymentDate"] = "employmentDate", ["ContractEndDate"] = "terminationDate", ["BirthDate"] = "birthDate",
+        ["EmploymentDate"] = "employmentDate", ["TerminationDate"] = "terminationDate", ["ContractEndDate"] = "contractEndDate", ["BirthDate"] = "birthDate",
         ["Gender"] = "gender", ["LastModified"] = "lastModifiedDateTime", ["VersionToken"] = "@odata.etag"
     };
 
@@ -122,7 +124,7 @@ public sealed class NavEmployeeAdapter : NavAdapterBase, INavEmployeeService
         m.GetString(r, "JobTitle"), m.GetString(r, "PositionCode"), m.GetString(r, "DepartmentCode"), m.GetString(r, "LocationCode"),
         m.GetString(r, "ManagerNo"), m.GetString(r, "CompanyEmail"), m.GetString(r, "MobilePhone"), m.GetString(r, "Status") ?? "Active",
         m.GetDate(r, "EmploymentDate"), m.GetDate(r, "ContractEndDate"), m.GetDate(r, "BirthDate"), m.GetString(r, "Gender"),
-        m.GetString(r, "VersionToken"), m.GetDateTimeUtc(r, "LastModified"));
+        m.GetString(r, "VersionToken"), m.GetDateTimeUtc(r, "LastModified"), TerminationDate: m.GetDate(r, "TerminationDate"));
 }
 
 /// <summary>Parses the JSON document returned by the ESS profile codeunit (format in docs/nav-customizations.md).</summary>

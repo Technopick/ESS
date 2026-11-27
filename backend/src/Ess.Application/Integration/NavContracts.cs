@@ -22,7 +22,8 @@ public sealed record NavEmployeeRecord(
     string? Gender,
     string? VersionToken,
     DateTime? LastModifiedUtc,
-    bool IsDeletedInNav = false);
+    bool IsDeletedInNav = false,
+    DateOnly? TerminationDate = null);
 
 /// <summary>Full profile for the employee's own profile page; fetched on demand, not bulk-synced.</summary>
 public sealed record NavEmployeeProfile(
@@ -74,6 +75,9 @@ public sealed record NavPayslip(
     decimal NetPay,
     DateOnly? PaymentDate,
     IReadOnlyList<NavPayslipLine> Lines);
+
+/// <summary>One employee's totals for a period with the statutory deductions by code (PAYE, NSSF-I, SHIF, AHL...).</summary>
+public sealed record NavPayslipTotals(string EmployeeNo, string Currency, decimal GrossPay, decimal TotalDeductions, decimal NetPay, IReadOnlyDictionary<string, decimal> Statutory);
 
 public sealed record NavExpenseClaimLine(int LineNo, string ExpenseCode, DateOnly Date, string Description, decimal Amount, string Currency);
 

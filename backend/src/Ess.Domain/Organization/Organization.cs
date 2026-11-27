@@ -68,7 +68,11 @@ public class Employee : AuditableEntity, ICompanyScoped, INavMirrored
     public Guid? ManagerEmployeeId { get; set; }
     public EmploymentStatus Status { get; set; }
     public DateOnly? EmploymentDate { get; set; }
+    /// <summary>End of the current fixed-term contract (HR add-on field; null for permanent staff or when NAV has no such field).</summary>
     public DateOnly? ContractEndDate { get; set; }
+    /// <summary>Date employment ended (standard NAV "Termination Date"). Used for turnover figures.</summary>
+    public DateOnly? TerminationDate { get; set; }
+    public string? Gender { get; set; }
     /// <summary>Stored only if company privacy settings allow birthday display.</summary>
     public DateOnly? BirthDate { get; set; }
     public Guid? PhotoDocumentId { get; set; }

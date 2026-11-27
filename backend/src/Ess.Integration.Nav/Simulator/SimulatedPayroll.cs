@@ -14,6 +14,7 @@ internal static class SimulatedPayroll
         ["SIM-002"] = (120_000m, 5_000m),
         ["SIM-003"] = (85_000m, 0m),
         ["SIM-004"] = (420_000m, 15_000m),
+        ["SIM-005"] = (95_000m, 0m),
     };
 
     private static readonly (string Code, int Month)[] Periods = { ("2026-10", 10), ("2026-11", 11) };

@@ -81,6 +81,32 @@ public sealed class NavPayrollAdapter : NavAdapterBase, INavPayrollService
             return NavResult<NavPayslip?>.Ok(slip);
         }, ct);
 
+    public Task<NavResult<IReadOnlyList<NavPayslipTotals>>> GetPeriodTotalsAsync(Guid companyId, string periodCode, CancellationToken ct) =>
+        RunAsync(companyId, "Payslip.PeriodTotals", async ctx =>
+        {
+            var hm = Mapper(ctx, "Payslip.Header", HeadOData, HeadBc);
+            var lm = Mapper(ctx, "Payslip.Lines", LineOData, LineBc);
+            var heads = await OData.GetAllAsync(ctx, "Payslip.Header",
+                new NavODataClient.Query(Filter: $"{hm.NavField("PeriodCode")} eq {NavODataClient.Literal(periodCode)}"), ct);
+            if (!heads.Success) return NavResult<IReadOnlyList<NavPayslipTotals>>.Fail(heads.Error!);
+            var lines = await OData.GetAllAsync(ctx, "Payslip.Lines",
+                new NavODataClient.Query(Filter: $"{lm.NavField("PeriodCode")} eq {NavODataClient.Literal(periodCode)} and {lm.NavField("Group")} eq 'Statutory'"), ct);
+            if (!lines.Success) return NavResult<IReadOnlyList<NavPayslipTotals>>.Fail(lines.Error!);
+            var statutory = lines.Value!
+                .Where(r => string.Equals(lm.GetString(r, "PeriodCode"), periodCode, StringComparison.OrdinalIgnoreCase))
+                .GroupBy(r => lm.GetString(r, "EmployeeNo") ?? "", StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => (IReadOnlyDictionary<string, decimal>)g.GroupBy(r => lm.GetString(r, "Code") ?? "").ToDictionary(c => c.Key, c => c.Sum(r => lm.GetDecimal(r, "Amount"))), StringComparer.OrdinalIgnoreCase);
+            var empty = new Dictionary<string, decimal>();
+            return NavResult<IReadOnlyList<NavPayslipTotals>>.Ok(heads.Value!
+                .Where(h => string.Equals(hm.GetString(h, "PeriodCode"), periodCode, StringComparison.OrdinalIgnoreCase))
+                .Select(h =>
+                {
+                    var no = hm.RequireString(h, "EmployeeNo");
+                    return new NavPayslipTotals(no, hm.GetString(h, "Currency") ?? "KES", hm.GetDecimal(h, "Gross"), hm.GetDecimal(h, "Deductions"), hm.GetDecimal(h, "Net"),
+                        statutory.TryGetValue(no, out var s) ? s : empty);
+                }).ToList());
+        }, ct);
+
     public Task<NavResult<byte[]?>> GetPayslipPdfAsync(Guid companyId, string employeeNo, string periodCode, CancellationToken ct) =>
         RunAsync(companyId, "Payslip.Pdf", async ctx =>
         {

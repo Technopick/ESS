@@ -45,4 +45,8 @@ public class Announcement : AuditableEntity, ICompanyScoped
     public Guid? TargetDepartmentId { get; set; }
     public Guid? TargetLocationId { get; set; }
     public bool IsPinned { get; set; }
+    /// <summary>Send an in-app (and optionally email) notice to the targeted staff when the announcement goes live.</summary>
+    public bool NotifyOnPublish { get; set; }
+    public bool NotifyByEmail { get; set; }
+    public DateTime? NotifiedAtUtc { get; set; }
 }

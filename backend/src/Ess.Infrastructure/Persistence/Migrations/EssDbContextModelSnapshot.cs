@@ -2510,6 +2510,18 @@ namespace Ess.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("modified_by");
 
+                    b.Property<DateTime?>("NotifiedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("notified_at_utc");
+
+                    b.Property<bool>("NotifyByEmail")
+                        .HasColumnType("boolean")
+                        .HasColumnName("notify_by_email");
+
+                    b.Property<bool>("NotifyOnPublish")
+                        .HasColumnType("boolean")
+                        .HasColumnName("notify_on_publish");
+
                     b.Property<DateTime>("PublishAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("publish_at_utc");
@@ -2944,6 +2956,11 @@ namespace Ess.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("first_name");
 
+                    b.Property<string>("Gender")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("gender");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -3007,6 +3024,10 @@ namespace Ess.Infrastructure.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
+
+                    b.Property<DateOnly?>("TerminationDate")
+                        .HasColumnType("date")
+                        .HasColumnName("termination_date");
 
                     b.Property<string>("WorkEmail")
                         .HasMaxLength(256)

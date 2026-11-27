@@ -82,7 +82,9 @@ public sealed class NavEngineEndToEndTests : IAsyncLifetime
         using var scope = _sp.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EssDbContext>();
         var emps = await db.Employees.Where(e => e.CompanyId == _companyId).ToListAsync();
-        emps.Should().HaveCount(4);
+        emps.Should().HaveCount(6);
+        emps.Single(e => e.NavKey == "SIM-006").TerminationDate.Should().Be(new DateOnly(2026, 6, 30));
+        emps.Single(e => e.NavKey == "SIM-005").ContractEndDate.Should().Be(new DateOnly(2027, 1, 31));
         var baraka = emps.Single(e => e.NavKey == "SIM-002");
         baraka.ManagerEmployeeId.Should().Be(emps.Single(e => e.NavKey == "SIM-004").Id);
         baraka.DepartmentId.Should().NotBeNull();

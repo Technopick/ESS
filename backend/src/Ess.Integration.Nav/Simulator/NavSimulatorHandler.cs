@@ -29,14 +29,22 @@ public sealed class NavSimulatorHandler : HttpMessageHandler
         Emp("SIM-002", "Baraka", "Otieno", "Accountant", "FIN", "NBI", "SIM-004", "Male"),
         Emp("SIM-003", "Chebet", "Kiprono", "HR Officer", "HR", "MSA", "SIM-001", "Female"),
         Emp("SIM-004", "Daudi", "Mwangi", "Finance Manager", "FIN", "NBI", null, "Male"),
+        // Fixed-term contract ending soon, and a former employee, so headcount, contract and turnover figures have data.
+        Emp("SIM-005", "Esther", "Njeri", "HR Officer", "HR", "NBI", "SIM-001", "Female", contractEnd: "2027-01-31", employed: "2025-02-01"),
+        Emp("SIM-006", "Faraji", "Hassan", "Accountant", "FIN", "MSA", "SIM-004", "Male", status: "Terminated", terminated: "2026-06-30", employed: "2021-03-15"),
     };
 
-    private static object Emp(string no, string first, string last, string title, string dept, string loc, string? mgr, string gender) => new Dictionary<string, object?>
+    private static IEnumerable<string> PaidEmployees() =>
+        Employees.Cast<Dictionary<string, object?>>().Where(e => (string?)e["Status"] != "Terminated").Select(e => (string)e["No"]!);
+
+    private static object Emp(string no, string first, string last, string title, string dept, string loc, string? mgr, string gender,
+        string status = "Active", string employed = "2020-01-06", string? contractEnd = null, string? terminated = null) => new Dictionary<string, object?>
     {
         ["No"] = no, ["First_Name"] = first, ["Middle_Name"] = "", ["Last_Name"] = last, ["Job_Title"] = title,
         ["Global_Dimension_1_Code"] = dept, ["Global_Dimension_2_Code"] = loc, ["Manager_No"] = mgr ?? "",
         ["Company_E_Mail"] = $"{first.ToLowerInvariant()}.{last.ToLowerInvariant()}@example.invalid", ["Mobile_Phone_No"] = "",
-        ["Status"] = "Active", ["Employment_Date"] = "2020-01-06", ["Termination_Date"] = "0001-01-01", ["Birth_Date"] = "0001-01-01",
+        ["Status"] = status, ["Employment_Date"] = employed, ["Termination_Date"] = terminated ?? "0001-01-01", ["Contract_End_Date"] = contractEnd ?? "0001-01-01",
+        ["Birth_Date"] = "0001-01-01",
         ["Gender"] = gender, ["Last_Date_Modified"] = "2026-01-01"
     };
 
@@ -70,8 +78,8 @@ public sealed class NavSimulatorHandler : HttpMessageHandler
                     new Dictionary<string, object?> { ["Code"] = "2026-10", ["Name"] = "October 2026", ["Starting_Date"] = "2026-10-01", ["Ending_Date"] = "2026-10-31", ["Pay_Date"] = "2026-10-28", ["Closed"] = true },
                     new Dictionary<string, object?> { ["Code"] = "2026-11", ["Name"] = "November 2026", ["Starting_Date"] = "2026-11-01", ["Ending_Date"] = "2026-11-30", ["Pay_Date"] = "2026-11-27", ["Closed"] = false }
                 },
-                "ESSPayslipHeaders" => SimulatedPayroll.Headers(Employees.Cast<Dictionary<string, object?>>().Select(e => (string)e["No"]!)),
-                "ESSPayslipLines" => SimulatedPayroll.Lines(Employees.Cast<Dictionary<string, object?>>().Select(e => (string)e["No"]!)),
+                "ESSPayslipHeaders" => SimulatedPayroll.Headers(PaidEmployees()),
+                "ESSPayslipLines" => SimulatedPayroll.Lines(PaidEmployees()),
                 _ => throw new InvalidOperationException($"Simulator has no entity set '{service}'.")
             };
             rows = ApplyEqFilters(rows, query);
