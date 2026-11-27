@@ -30,6 +30,7 @@ param(
     [string] $DataRoot = 'C:\EssData',
     [string] $SiteName = 'ESS Portal',
     [string] $AppPoolName = 'EssPortal',
+    [ValidateSet('Production', 'UAT')] [string] $Environment = 'Production',
     [int] $HttpsPort = 443,
     # Domain account for the pool. Needed when NAV uses Windows authentication; otherwise ApplicationPoolIdentity is used.
     [pscredential] $ServiceAccount,
@@ -129,7 +130,7 @@ if (-not $jwt) {
     $jwt = $existing['Jwt__SigningKey']
     if (-not $jwt) { $bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); $jwt = [Convert]::ToBase64String($bytes) }
 }
-$envVars['ASPNETCORE_ENVIRONMENT'] = 'Production'
+$envVars['ASPNETCORE_ENVIRONMENT'] = $Environment
 $envVars['ConnectionStrings__Ess'] = ConvertFrom-Secure $DatabaseConnectionString
 $envVars['Jwt__SigningKey'] = $jwt
 $envVars['App__PublicUrl'] = "https://$HostName" + $(if ($HttpsPort -ne 443) { ":$HttpsPort" } else { '' })

@@ -35,17 +35,26 @@ public sealed class LeaveBalanceService
         {
             // Defence in depth: only keep rows for this employee.
             var rows = live.Value!.Where(b => string.Equals(b.EmployeeNo, employee.NavKey, StringComparison.OrdinalIgnoreCase) && types.ContainsKey(b.LeaveTypeCode)).ToList();
-            var existing = await _db.LeaveBalancesCache.Where(c => c.EmployeeId == employee.Id).ToListAsync(ct);
-            _db.LeaveBalancesCache.RemoveRange(existing);
-            var now = DateTime.UtcNow;
-            foreach (var b in rows)
-                _db.LeaveBalancesCache.Add(new LeaveBalanceCache
-                {
-                    CompanyId = employee.CompanyId, EmployeeId = employee.Id, LeaveTypeId = types[b.LeaveTypeCode].Id, LeavePeriodCode = b.PeriodCode,
-                    Entitlement = b.Entitlement, BroughtForward = b.BroughtForward, Taken = b.Taken, PendingApproval = b.Pending, Available = b.Available,
-                    RetrievedAtUtc = now
-                });
-            await _db.SaveChangesAsync(ct);
+            // The dashboard and the leave page often refresh the same employee's cache at the same moment; a short
+            // per-employee lock makes the replace atomic instead of failing one request with a duplicate key.
+            var strategy = _db.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var tx = await _db.Database.BeginTransactionAsync(ct);
+                await _db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(hashtext({0}))", new object[] { "leave-balances:" + employee.Id }, ct);
+                var existing = await _db.LeaveBalancesCache.Where(c => c.EmployeeId == employee.Id).ToListAsync(ct);
+                _db.LeaveBalancesCache.RemoveRange(existing);
+                var now = DateTime.UtcNow;
+                foreach (var b in rows)
+                    _db.LeaveBalancesCache.Add(new LeaveBalanceCache
+                    {
+                        CompanyId = employee.CompanyId, EmployeeId = employee.Id, LeaveTypeId = types[b.LeaveTypeCode].Id, LeavePeriodCode = b.PeriodCode,
+                        Entitlement = b.Entitlement, BroughtForward = b.BroughtForward, Taken = b.Taken, PendingApproval = b.Pending, Available = b.Available,
+                        RetrievedAtUtc = now
+                    });
+                await _db.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            });
         }
         else
         {

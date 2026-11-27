@@ -1,10 +1,11 @@
 # Employee Self-Service portal for Dynamics NAV / Business Central
 
-Enterprise ESS portal that keeps Dynamics NAV/BC as the system of record. Built in phases; Phases 1, 2, 3 and 5 are done. Phase 4 (the remaining adapters) waits for access to the customer's NAV.
+Enterprise ESS portal that keeps Dynamics NAV/BC as the system of record. Built in phases; Phases 1, 2, 3, 5 and 6 are done. Phase 4 (the remaining adapters) waits for access to the customer's NAV.
 
 * Architecture: [docs/architecture.md](docs/architecture.md)
 * NAV integration mapping and discovery checklist: [docs/nav-integration-mapping.md](docs/nav-integration-mapping.md)
 * NAV customisations required: [docs/nav-customizations.md](docs/nav-customizations.md)
+* Phase 6: [security test report](docs/phase6-security-test-report.md), [performance test report](docs/performance-test-report.md), [UAT plan](docs/uat-plan.md) and [scripts](docs/uat-test-scripts.md), [DPIA](docs/dpia.md), [retention schedule](docs/retention-schedule.md)
 
 ## What works today (Phases 1, 2, 3 and 5)
 
@@ -53,7 +54,13 @@ cd backend && ESS_TEST_DB="Host=localhost;Username=postgres;Password=postgres;Da
 cd frontend && npm test
 ```
 
-Without `ESS_TEST_DB` the end-to-end tests are skipped.
+Without `ESS_TEST_DB` the end-to-end tests are skipped. The security tests (`SecurityTests.cs`) run with the rest and fail the build if a new endpoint lacks a permission.
+
+The 10,000-employee load test is opt-in because seeding takes about a minute:
+
+```bash
+cd backend && ESS_PERF=1 ESS_PERF_REPORT=perf.md ESS_TEST_DB="..." dotnet test --filter PerformanceTests
+```
 
 ## Windows Server and IIS (customer target)
 

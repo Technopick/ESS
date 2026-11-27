@@ -177,6 +177,7 @@ internal class LeaveApplicationConfig : IEntityTypeConfiguration<LeaveApplicatio
         e.HasIndex(x => new { x.CompanyId, x.Reference }).IsUnique();
         e.HasIndex(x => new { x.EmployeeId, x.StartDate, x.EndDate });
         e.HasIndex(x => new { x.CompanyId, x.Status });
+        e.HasIndex(x => new { x.CompanyId, x.SubmittedAtUtc }); // HR list and reports sort by submission date (Phase 6 load test)
         e.HasIndex(x => x.NavStatus);
         e.Property(x => x.DaysRequested).HasPrecision(9, 2);
         e.Property(x => x.RowVersion).IsRowVersion();
@@ -255,6 +256,7 @@ internal class ExpenseClaimConfig : IEntityTypeConfiguration<ExpenseClaim>
     {
         e.HasIndex(x => new { x.CompanyId, x.Reference }).IsUnique();
         e.HasIndex(x => new { x.EmployeeId, x.Status });
+        e.HasIndex(x => new { x.CompanyId, x.SubmittedAtUtc }); // finance list and reports by period (Phase 6 load test)
         e.HasIndex(x => x.NavStatus);
         e.Property(x => x.TotalAmount).HasPrecision(18, 2);
         e.Property(x => x.RowVersion).IsRowVersion();

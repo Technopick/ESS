@@ -131,7 +131,7 @@ This avoids two competing approval processes. The owner per document type is dec
 * **Logs**: NAV request/response bodies are masked (passwords, tokens, ID/KRA PIN/NSSF/SHIF numbers, bank accounts, pay amounts, birth dates) before storage.
 * **Transport**: HTTPS with HSTS, security headers, CORS allow-list, rate limiting (10/min on auth endpoints, 300/min per user overall).
 * **Audit**: `audit_logs` records sign-ins, payslip downloads, approvals, integration retries and configuration changes with user, IP and correlation id.
-* **Kenya Data Protection Act 2019**: data minimisation (payroll not stored by default), purpose-limited access by role, encryption at rest for sensitive fields, audit trails, retention settings per document category, and support for data-subject access requests through HR. A DPIA template and retention schedule are Phase 6 deliverables.
+* **Kenya Data Protection Act 2019**: data minimisation (payroll not stored by default), purpose-limited access by role, encryption at rest for sensitive fields, audit trails, retention settings per document category, and support for data-subject access requests through HR. See the [DPIA](dpia.md) and the [retention schedule](retention-schedule.md); a nightly `data-retention` job enforces the automatic periods.
 
 ## 9. Performance and scale (100 to 10,000+ employees)
 

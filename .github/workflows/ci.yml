@@ -30,6 +30,12 @@ jobs:
           dotnet-version: 8.0.x
       - name: Install PDF fonts
         run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+      - name: Check for vulnerable packages
+        working-directory: backend
+        run: |
+          dotnet restore
+          dotnet list package --vulnerable --include-transitive | tee vulnerable.txt
+          if grep -q "has the following vulnerable packages" vulnerable.txt; then echo "::error::Vulnerable NuGet packages found"; exit 1; fi
       - name: Test
         working-directory: backend
         env:
@@ -49,6 +55,8 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --no-audit --no-fund
+      - name: Check production dependencies for vulnerabilities
+        run: npm audit --omit=dev --audit-level=moderate
       - run: npm run lint
       - run: npx vitest run
       - run: npm run build

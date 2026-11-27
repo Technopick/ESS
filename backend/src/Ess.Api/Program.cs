@@ -35,6 +35,7 @@ try
     builder.Host.UseWindowsService();
 
     // ---------- Core services ----------
+    builder.Services.AddMemoryCache();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
     builder.Services.AddScoped<Ess.Api.Auth.TokenService>();
@@ -49,6 +50,7 @@ try
     builder.Services.AddScoped<Ess.Api.Services.ManagementDashboardService>();
     builder.Services.AddScoped<Ess.Api.Services.AnnouncementService>();
     builder.Services.AddScoped<Ess.Api.Services.HrAlertService>();
+    builder.Services.AddScoped<Ess.Api.Services.RetentionService>();
     Ess.Api.Reporting.PortalFontResolver.ConfiguredRegularPath = config["Reporting:FontPath"];
     Ess.Api.Reporting.PortalFontResolver.ConfiguredBoldPath = config["Reporting:BoldFontPath"];
     builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.ExpenseWorkflowHandler>();
@@ -235,6 +237,7 @@ try
         jobs.AddOrUpdate<Ess.Api.Services.LeaveService>("leave-nav-status", s => s.MirrorNavStatusesAsync(CancellationToken.None), "*/10 * * * *");
         jobs.AddOrUpdate<Ess.Api.Services.AnnouncementService>("announcements-publish", s => s.NotifyDueAsync(CancellationToken.None), "*/10 * * * *");
         jobs.AddOrUpdate<Ess.Api.Services.HrAlertService>("contracts-expiry", s => s.NotifyContractExpiriesAsync(CancellationToken.None), "15 6 * * *");
+        jobs.AddOrUpdate<Ess.Api.Services.RetentionService>("data-retention", s => s.RunAsync(CancellationToken.None), config["Retention:Cron"] ?? "30 2 * * *");
     }
 
     app.Run();
