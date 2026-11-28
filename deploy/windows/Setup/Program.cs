@@ -44,7 +44,7 @@ internal static class Program
             Console.WriteLine();
             Title("Summary");
             Console.WriteLine($"  Environment      {a.Environment}");
-            Console.WriteLine($"  Address          https://{a.HostName}");
+            Console.WriteLine($"  Address          {a.Url}");
             Console.WriteLine($"  HTTPS cert       {(a.CreateSelfSigned ? "new self-signed certificate (testing only)" : a.CertificateThumbprint)}");
             Console.WriteLine($"  Database         {a.DbServer}:{a.DbPort}/{a.DbName} as {a.DbUser}");
             Console.WriteLine($"  Install folder   {a.InstallRoot}   data: {a.DataRoot}");
@@ -64,7 +64,7 @@ internal static class Program
                 return code;
             }
             Title("Done");
-            Console.WriteLine($"  Open https://{a.HostName} and sign in{(string.IsNullOrEmpty(a.AdminUser) ? "" : " as " + a.AdminUser)}.");
+            Console.WriteLine($"  Open {a.Url} and sign in{(string.IsNullOrEmpty(a.AdminUser) ? "" : " as " + a.AdminUser)}.");
             Console.WriteLine("  Next: set up two-step verification, then System administration > NAV connection.");
             if (a.GeneratedDbPassword)
             {
@@ -122,6 +122,8 @@ internal static class Program
         Title("1. Portal");
         a.Environment = Choose("Is this the live (Production) or test (UAT) server?", new[] { "Production", "UAT" }, p.Environment ?? "Production");
         a.HostName = Text("Portal host name (for example ess.company.co.ke)", p.HostName, required: true)!;
+        Console.WriteLine("  The standard HTTPS port is 443. Use another port, such as 4048, if 443 is taken on this server.");
+        a.HttpsPort = Number("HTTPS port", 1, 65535, p.HttpsPort == 0 ? 443 : p.HttpsPort);
         a.InstallRoot = Text("Install folder", p.InstallRoot ?? (a.Environment == "UAT" ? @"C:\inetpub\ess-portal-uat" : DefaultInstallRoot))!;
         a.DataRoot = Text("Data folder (documents, keys, logs, backups)", p.DataRoot ?? (a.Environment == "UAT" ? @"C:\EssDataUat" : @"C:\EssData"))!;
 
@@ -236,6 +238,7 @@ internal static class Program
         Set("HOSTING_BUNDLE_URL", HostingBundleUrl);
         Set("ENVIRONMENT", a.Environment);
         Set("HOST", a.HostName);
+        Set("HTTPS_PORT", a.HttpsPort.ToString());
         Set("INSTALL_ROOT", a.InstallRoot);
         Set("DATA_ROOT", a.DataRoot);
         Set("SITE", a.Environment == "UAT" ? "ESS Portal UAT" : "ESS Portal");
@@ -356,6 +359,7 @@ internal sealed class Answers
 {
     public string? Environment { get; set; }
     public string? HostName { get; set; }
+    public int HttpsPort { get; set; }
     public string? InstallRoot { get; set; }
     public string? DataRoot { get; set; }
     public string? CertificateThumbprint { get; set; }
@@ -372,6 +376,7 @@ internal sealed class Answers
     public string? SmsProvider { get; set; }
     public string? SmsSenderId { get; set; }
 
+    [System.Text.Json.Serialization.JsonIgnore] public string Url => HttpsPort is 0 or 443 ? $"https://{HostName}" : $"https://{HostName}:{HttpsPort}";
     [System.Text.Json.Serialization.JsonIgnore] public bool CreateSelfSigned { get; set; }
     [System.Text.Json.Serialization.JsonIgnore] public string? DbAdminPassword { get; set; }
     [System.Text.Json.Serialization.JsonIgnore] public string? DbPassword { get; set; }

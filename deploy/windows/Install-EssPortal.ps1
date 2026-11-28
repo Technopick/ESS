@@ -173,6 +173,35 @@ foreach ($name in $envVars.Keys) {
 
 # ---------------------------------------------------------------- site
 Write-Step "Configuring site $SiteName"
+
+# Port checks before IIS is changed: another IIS site with the same port and host name, or a program outside IIS
+# listening on the port, would stop the site from starting.
+function Get-PortListeners([int] $Port) {
+    if (-not (Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue)) { return @() }
+    @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
+        Where-Object { $_.OwningProcess -ne 4 } |   # PID 4 is http.sys, which IIS shares with others
+        ForEach-Object { $proc = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue; "$(if ($proc) { $proc.ProcessName } else { 'PID ' + $_.OwningProcess }) (PID $($_.OwningProcess))" } |
+        Select-Object -Unique)
+}
+function Get-SiteConflicts([int] $Port, [string] $HostHeader, [string] $Protocol) {
+    # Same port and same host name, or HTTP and HTTPS on one port, cannot coexist. Another HTTPS site without a host
+    # name can share the port with this SNI binding.
+    @(foreach ($other in $sm.Sites) {
+        if ($other.Name -eq $SiteName) { continue }
+        foreach ($b in $other.Bindings) {
+            if ($b.Protocol -notin 'http', 'https') { continue }
+            $parts = $b.BindingInformation.Split(':')
+            if ($parts.Count -ge 3 -and $parts[1] -eq "$Port" -and ($parts[2] -eq $HostHeader -or $b.Protocol -ne $Protocol)) {
+                "'$($other.Name)' ($($b.Protocol) $($b.BindingInformation))"
+            }
+        }
+    })
+}
+$siteConflicts = Get-SiteConflicts $HttpsPort $HostName 'https'
+if ($siteConflicts) { throw "Port $HttpsPort is already used by IIS site $($siteConflicts -join ', '). Choose another HTTPS port, or stop or change that site." }
+$listeners = Get-PortListeners $HttpsPort
+if ($listeners) { throw "Port $HttpsPort is already used by $($listeners -join ', '). Choose another HTTPS port, or stop that program." }
+
 $site = $sm.Sites[$SiteName]
 $bindingInfo = "*:${HttpsPort}:$HostName"
 if (-not $site) {
@@ -182,16 +211,34 @@ if (-not $site) {
     $site.Bindings[0].SslFlags = 'Sni'
 } else {
     $site.Applications['/'].VirtualDirectories['/'].PhysicalPath = [string]$app
+    # Drop bindings from an earlier run on another port, so a changed port does not keep the old conflict.
+    foreach ($old in @($site.Bindings | Where-Object { $_.Protocol -eq 'https' -and $_.BindingInformation -ne $bindingInfo })) { $site.Bindings.Remove($old) }
     $https = $site.Bindings | Where-Object { $_.Protocol -eq 'https' -and $_.BindingInformation -eq $bindingInfo }
-    if (-not $https) { $https = $site.Bindings.Add($bindingInfo, $cert.GetCertHash(), 'My', 'Sni') } else { $https.CertificateHash = $cert.GetCertHash() }
+    if (-not $https) { $https = $site.Bindings.Add([string]$bindingInfo, $cert.GetCertHash(), 'My', 'Sni') } else { $https.CertificateHash = $cert.GetCertHash() }
 }
-# Plain HTTP only redirects to HTTPS (the app also sends HSTS).
-if (-not ($site.Bindings | Where-Object { $_.Protocol -eq 'http' -and $_.BindingInformation -eq "*:80:$HostName" })) { [void] $site.Bindings.Add("*:80:$HostName", 'http') }
+# Plain HTTP on port 80 only redirects to HTTPS, and only for the standard port 443. With a custom port, or when port 80
+# is taken by a program outside IIS, there is no HTTP binding: users open https://host:port directly.
+$httpBinding = "*:80:$HostName"
+$wantHttp = $HttpsPort -eq 443
+if ($wantHttp -and ((Get-PortListeners 80) -or (Get-SiteConflicts 80 $HostName 'http'))) {
+    Write-Warning "Port 80 is in use, so there is no HTTP-to-HTTPS redirect. Users must type https://."
+    $wantHttp = $false
+}
+foreach ($old in @($site.Bindings | Where-Object { $_.Protocol -eq 'http' -and (-not $wantHttp -or $_.BindingInformation -ne $httpBinding) })) { $site.Bindings.Remove($old) }
+if ($wantHttp -and -not ($site.Bindings | Where-Object { $_.Protocol -eq 'http' -and $_.BindingInformation -eq $httpBinding })) { [void] $site.Bindings.Add($httpBinding, 'http') }
 $site.Applications['/'].ApplicationPoolName = [string]$AppPoolName
 $site.ApplicationDefaults.ApplicationPoolName = [string]$AppPoolName
 $site.Applications['/'].SetAttributeValue('preloadEnabled', $true)
 $site.ServerAutoStart = $true
 $sm.CommitChanges()
+
+if ($HttpsPort -ne 443 -and (Get-Command New-NetFirewallRule -ErrorAction SilentlyContinue)) {
+    $ruleName = "ESS Portal HTTPS $HttpsPort"
+    if (-not (Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue)) {
+        New-NetFirewallRule -DisplayName $ruleName -Direction Inbound -Protocol TCP -LocalPort $HttpsPort -Action Allow -Profile Domain, Private | Out-Null
+        Write-Host "Opened TCP port $HttpsPort in Windows Firewall (domain and private networks)."
+    }
+}
 
 # ---------------------------------------------------------------- permissions
 Write-Step "Granting $identity access"
@@ -207,7 +254,13 @@ if ($SkipStart) { Write-Host 'Installed. Start the site when ready.' -Foreground
 Write-Step 'Starting the portal'
 $sm = Get-IISServerManager
 if ($sm.ApplicationPools[$AppPoolName].State -ne 'Started') { [void] $sm.ApplicationPools[$AppPoolName].Start() } else { [void] $sm.ApplicationPools[$AppPoolName].Recycle() }
-if ($sm.Sites[$SiteName].State -ne 'Started') { [void] $sm.Sites[$SiteName].Start() }
+if ($sm.Sites[$SiteName].State -ne 'Started') {
+    try { [void] $sm.Sites[$SiteName].Start() }
+    catch {
+        $who = @(Get-PortListeners $HttpsPort) + @(Get-SiteConflicts $HttpsPort $HostName 'https')
+        throw "IIS could not start the site on port $HttpsPort$(if ($who) { ' (in use by ' + ($who -join ', ') + ')' }). Run setup again with another HTTPS port, for example 4048. Details: $($_.Exception.Message)"
+    }
+}
 
 # Readiness check. Windows PowerShell 5.1 defaults to old TLS versions, and a self-signed certificate or a host name
 # that DNS does not resolve yet on this server would make the check fail although the portal is fine, so: TLS 1.2,

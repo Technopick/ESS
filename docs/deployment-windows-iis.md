@@ -41,6 +41,8 @@ The API serves the React app itself, so IIS needs a single site and no URL Rewri
 3. Answer the questions. Press Enter to accept a default. Passwords are typed hidden and never saved. Setup then adds the IIS features, downloads and installs the ASP.NET Core 8 Hosting Bundle if missing, creates the database, and installs the site.
 4. Continue at step 4 below (sign in, NAV connection, backups).
 
+Setup asks for the **HTTPS port** (default 443). Choose another, such as 4048, when 443 is taken on the server; users then open `https://host:4048`. With a custom port there is no HTTP redirect on port 80, and setup opens the port in Windows Firewall for domain and private networks. If a port is taken, setup names the IIS site or program using it before changing anything.
+
 Running the same or a newer setup file again **updates** the portal: the database script is idempotent, data is kept, and the previous answers (not the passwords) are offered as defaults. Setup logs to `C:\ProgramData\EssPortalSetup\setup-*.log`. If the database password was generated, setup shows it once at the end: store it, because backups and updates need it.
 
 ### Step by step with the scripts

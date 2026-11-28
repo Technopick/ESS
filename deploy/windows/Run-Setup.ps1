@@ -83,6 +83,7 @@ try {
     $install = @{
         HostName = $in.HOST; CertificateThumbprint = $in.CERT; DatabaseConnectionString = (Sec $cs)
         Environment = $in.ENVIRONMENT; InstallRoot = $in.INSTALL_ROOT; DataRoot = $in.DATA_ROOT
+        HttpsPort = $(if ($in.HTTPS_PORT) { [int]$in.HTTPS_PORT } else { 443 })
         SiteName = $in.SITE; AppPoolName = $in.POOL; InstallPrerequisites = $true
     }
     if ($in.KEY_CERT) { $install.KeyProtectionCertificateThumbprint = $in.KEY_CERT }
