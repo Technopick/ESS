@@ -106,6 +106,7 @@ export const Permissions = {
   ProfileRequestChange: 'profile.change.request',
   EmployeesViewDirectory: 'employees.view.directory',
   UsersManage: 'users.manage',
+  SettingsManage: 'settings.manage',
   LeaveViewOwn: 'leave.view.own',
   PayrollViewOwn: 'payroll.view.own',
   PayrollPublish: 'payroll.publish',

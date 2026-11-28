@@ -29,6 +29,8 @@ public sealed class SecurityTests : ApiTestBase
         "POST api/auth/login", "POST api/auth/mfa", "POST api/auth/refresh", "POST api/auth/logout",
         "POST api/auth/forgot-password", "POST api/auth/reset-password",
         "GET health/live", "GET health/ready",
+        // Name, colours and logo only: the sign-in page needs them before anyone is signed in.
+        "GET api/branding", "GET api/branding/logo",
     };
 
     /// <summary>Signed-in routes that intentionally need no specific permission (each one scopes its data to the caller).</summary>
@@ -93,7 +95,7 @@ public sealed class SecurityTests : ApiTestBase
         foreach (var r in routes) _out.WriteLine($"{r.Method,-6} /{r.Pattern,-70} {(r.Anonymous ? "ANONYMOUS" : r.Policy ?? "signed in")}");
 
         routes.Where(r => r.Anonymous && !AnonymousAllowed.Contains($"{r.Method} {r.Pattern}"))
-            .Select(r => $"{r.Method} {r.Pattern}").Should().BeEmpty("only sign-in, password reset and health checks may be anonymous");
+            .Select(r => $"{r.Method} {r.Pattern}").Should().BeEmpty("only sign-in, password reset, health checks and public branding may be anonymous");
 
         routes.Where(r => AdminPrefixes.Any(p => r.Pattern.StartsWith(p, StringComparison.OrdinalIgnoreCase)) && r.Policy?.StartsWith("perm:") != true
                           && !AdminExceptions.Contains($"{r.Method} {r.Pattern}"))

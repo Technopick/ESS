@@ -2,10 +2,11 @@ import { useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   AppBar, Box, Divider, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, ListSubheader,
-  Menu, MenuItem, Toolbar, Tooltip, Typography, useMediaQuery, useTheme,
+  Menu, MenuItem, Toolbar, Tooltip, useMediaQuery, useTheme,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
+import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
 import SyncAltIcon from '@mui/icons-material/SyncAlt'
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
 import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
@@ -36,6 +37,8 @@ import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsAc
 import SettingsEthernetOutlinedIcon from '@mui/icons-material/SettingsEthernetOutlined'
 import { Permissions, reportPermissions, useAuth } from '../auth/AuthContext'
 import { useThemeMode } from '../theme/AppThemeProvider'
+import { brandTint } from '../theme/buildTheme'
+import { BrandMark } from '../components/BrandMark'
 import { NotificationBell } from '../components/NotificationBell'
 
 const drawerWidth = 260
@@ -95,6 +98,7 @@ const sections: { title: string; items: NavItem[] }[] = [
   {
     title: 'System administration',
     items: [
+      { to: '/admin/branding', label: 'Look and feel', icon: <PaletteOutlinedIcon />, permission: Permissions.SettingsManage },
       { to: '/admin/users', label: 'Users', icon: <ManageAccountsOutlinedIcon />, permission: Permissions.UsersManage },
       { to: '/admin/roles', label: 'Roles', icon: <AdminPanelSettingsOutlinedIcon />, permission: Permissions.UsersManage },
       { to: '/admin/notifications', label: 'Notifications', icon: <NotificationsActiveOutlinedIcon />, permission: Permissions.NotificationsConfigure },
@@ -110,16 +114,14 @@ export function PortalLayout() {
   const [open, setOpen] = useState(false)
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const { me, can, logout } = useAuth()
-  const { mode, setMode, branding } = useThemeMode()
+  const { mode, setMode } = useThemeMode()
   const navigate = useNavigate()
   const dark = theme.palette.mode === 'dark'
 
   const drawer = (
     <Box role="navigation" aria-label="Main">
       <Toolbar>
-        <Typography variant="subtitle1" fontWeight={700} noWrap>
-          {branding.companyName}
-        </Typography>
+        <BrandMark />
       </Toolbar>
       <Divider />
       {sections.map((s) => {
@@ -129,7 +131,7 @@ export function PortalLayout() {
           <List key={s.title} subheader={<ListSubheader disableSticky>{s.title}</ListSubheader>} dense>
             {visible.map((i) => (
               <ListItemButton key={i.to} component={NavLink} to={i.to} end onClick={() => setOpen(false)}
-                sx={{ mx: 1, borderRadius: 2, '&.active': { bgcolor: 'action.selected', fontWeight: 600 } }}>
+                sx={{ mx: 1, borderRadius: 2, '&.active': { bgcolor: brandTint(theme), color: 'primary.main', '& .MuiListItemIcon-root': { color: 'primary.main' }, '& .MuiListItemText-primary': { fontWeight: 600 } } }}>
                 <ListItemIcon sx={{ minWidth: 36 }}>{i.icon}</ListItemIcon>
                 <ListItemText primary={i.label} />
               </ListItemButton>

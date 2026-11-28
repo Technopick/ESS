@@ -3,10 +3,12 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { Alert, Box, Button, Card, CardContent, Link, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, Link, Stack, TextField, Typography, useTheme } from '@mui/material'
 import { useAuth } from '../auth/AuthContext'
 import { errorMessage } from '../api/client'
 import { useThemeMode } from '../theme/AppThemeProvider'
+import { brandGradient } from '../theme/buildTheme'
+import { BrandMark } from '../components/BrandMark'
 
 const schema = z.object({
   userName: z.string().trim().min(1, 'Enter your user name or email'),
@@ -17,6 +19,7 @@ type FormValues = z.infer<typeof schema>
 export function LoginPage() {
   const { me, login, verifyMfa } = useAuth()
   const { branding } = useThemeMode()
+  const theme = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
   const [error, setError] = useState<string | null>(null)
@@ -56,12 +59,24 @@ export function LoginPage() {
   }
 
   return (
-    <Box className="flex min-h-full items-center justify-center p-4" sx={{ bgcolor: 'background.default' }}>
-      <Card sx={{ width: '100%', maxWidth: 400 }}>
-        <CardContent sx={{ p: 4 }}>
-          <Typography variant="h1" gutterBottom>
-            {branding.companyName}
+    <Box className="flex min-h-full" sx={{ bgcolor: 'background.default' }}>
+      <Box sx={{ display: { xs: 'none', md: 'flex' }, flexDirection: 'column', justifyContent: 'space-between', width: '44%', maxWidth: 620, p: 6,
+        color: '#fff', background: brandGradient(theme), position: 'relative', overflow: 'hidden' }}>
+        <Box aria-hidden sx={{ position: 'absolute', width: 520, height: 520, borderRadius: '50%', right: -180, bottom: -200, bgcolor: 'rgba(255,255,255,0.07)' }} />
+        <Box aria-hidden sx={{ position: 'absolute', width: 260, height: 260, borderRadius: '50%', right: 120, top: -90, bgcolor: 'rgba(255,255,255,0.05)' }} />
+        <BrandMark size={44} inverse showName={false} />
+        <Box sx={{ position: 'relative' }}>
+          <Typography component="p" sx={{ fontSize: '2.2rem', fontWeight: 700, lineHeight: 1.15, mb: 2 }}>{branding.appName}</Typography>
+          <Typography sx={{ fontSize: '1.1rem', opacity: 0.9, maxWidth: 420 }}>
+            {branding.welcomeText ?? 'Leave, payslips, claims and HR requests in one place.'}
           </Typography>
+        </Box>
+        <Typography variant="body2" sx={{ opacity: 0.75, position: 'relative' }}>Signed-in activity is recorded to protect your information.</Typography>
+      </Box>
+      <Box className="flex flex-1 items-center justify-center p-4">
+        <Box sx={{ width: '100%', maxWidth: 400 }}>
+          <Box sx={{ display: { md: 'none' }, mb: 3 }}><BrandMark size={40} /></Box>
+          <Typography variant="h1" gutterBottom>{challenge ? 'Two-step verification' : 'Welcome back'}</Typography>
           {!challenge ? (
             <>
               <Typography color="text.secondary" sx={{ mb: 3 }}>
@@ -99,8 +114,8 @@ export function LoginPage() {
               </Stack>
             </form>
           )}
-        </CardContent>
-      </Card>
+        </Box>
+      </Box>
     </Box>
   )
 }
