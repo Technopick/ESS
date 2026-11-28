@@ -92,7 +92,7 @@ Go to **System administration, NAV connection, Add a NAV connection**:
 | Field | Value |
 |---|---|
 | Name | For example *NAV 2016 Live* |
-| Version | NAV 2016 |
+| Version | **NAV 2016**, even though the newer *Business Central on-premises* option is listed: it changes the addresses and which protocols the portal uses |
 | NAV server | The NAV server's host name, for example `NAVSERVER` |
 | Server instance | `DynamicsNAV90` |
 | HTTPS | Only if the service ports have a certificate |
