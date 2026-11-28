@@ -153,6 +153,17 @@ try
     // ---------- Health ----------
     builder.Services.AddHealthChecks().AddNpgSql(cs, name: "postgres", tags: new[] { "ready" });
 
+    // Behind a reverse proxy on the same server (IIS ARR, see deploy/windows/Enable-EssReverseProxy.ps1) the request
+    // arrives from loopback over HTTP; trust X-Forwarded-For/-Proto from loopback only (the framework default) plus any
+    // proxies listed in ForwardedHeaders:KnownProxies. X-Forwarded-Host is not trusted: the proxy preserves Host.
+    builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(o =>
+    {
+        o.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+        o.ForwardLimit = 1;
+        foreach (var ip in config.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? Array.Empty<string>())
+            if (System.Net.IPAddress.TryParse(ip, out var addr)) o.KnownProxies.Add(addr);
+    });
+
     var app = builder.Build();
 
     // ---------- Database ----------
@@ -168,6 +179,7 @@ try
     }
 
     // ---------- Pipeline ----------
+    app.UseForwardedHeaders();
     app.UseExceptionHandler();
     app.UseSerilogRequestLogging(o => o.GetLevel = (ctx, _, ex) =>
         ex is not null || ctx.Response.StatusCode >= 500 ? Serilog.Events.LogEventLevel.Error : Serilog.Events.LogEventLevel.Information);

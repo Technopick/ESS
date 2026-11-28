@@ -224,7 +224,8 @@ if ($wantHttp -and ((Get-PortListeners 80) -or (Get-SiteConflicts 80 $HostName '
     Write-Warning "Port 80 is in use, so there is no HTTP-to-HTTPS redirect. Users must type https://."
     $wantHttp = $false
 }
-foreach ($old in @($site.Bindings | Where-Object { $_.Protocol -eq 'http' -and (-not $wantHttp -or $_.BindingInformation -ne $httpBinding) })) { $site.Bindings.Remove($old) }
+# The private 127.0.0.1 binding used by Enable-EssReverseProxy.ps1 is kept.
+foreach ($old in @($site.Bindings | Where-Object { $_.Protocol -eq 'http' -and -not $_.BindingInformation.StartsWith('127.0.0.1:') -and (-not $wantHttp -or $_.BindingInformation -ne $httpBinding) })) { $site.Bindings.Remove($old) }
 if ($wantHttp -and -not ($site.Bindings | Where-Object { $_.Protocol -eq 'http' -and $_.BindingInformation -eq $httpBinding })) { [void] $site.Bindings.Add($httpBinding, 'http') }
 $site.Applications['/'].ApplicationPoolName = [string]$AppPoolName
 $site.ApplicationDefaults.ApplicationPoolName = [string]$AppPoolName

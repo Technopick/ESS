@@ -96,6 +96,11 @@ try {
     if ($in.ADMIN_USER) { $install.BootstrapAdminUserName = $in.ADMIN_USER; $install.BootstrapAdminPassword = (Sec $in.ADMIN_PASSWORD) }
     & (Join-Path $PSScriptRoot 'Install-EssPortal.ps1') @install
 
+    if ($in.REVERSE_PROXY) {
+        Step "Publishing https://$($in.HOST) on port 443 through the IIS reverse proxy"
+        & (Join-Path $PSScriptRoot 'Enable-EssReverseProxy.ps1') -HostName $in.HOST -CertificateThumbprint $in.CERT -PortalSiteName $in.SITE -PortalAppPoolName $in.POOL
+    }
+
     # Keep the operations scripts and guide next to the installed site for backups and updates.
     Copy-Item (Join-Path $PSScriptRoot '*.ps1') $in.INSTALL_ROOT -Exclude 'Run-Setup.ps1' -Force
     Copy-Item (Join-Path $PSScriptRoot 'deployment-windows-iis.md') $in.INSTALL_ROOT -Force -ErrorAction SilentlyContinue

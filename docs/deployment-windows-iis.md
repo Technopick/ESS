@@ -43,6 +43,12 @@ The API serves the React app itself, so IIS needs a single site and no URL Rewri
 
 Setup asks for the **HTTPS port** (default 443). Choose another, such as 4048, when 443 is taken on the server; users then open `https://host:4048`. With a custom port there is no HTTP redirect on port 80, and setup opens the port in Windows Firewall for domain and private networks. If a port is taken, setup names the IIS site or program using it before changing anything.
 
+**Port 443 already taken by another IIS site?** Give the portal a custom port (for example 4048) and answer *Yes* to "Publish the portal at https://host on port 443 through IIS?". Setup then runs `Enable-EssReverseProxy.ps1`, which installs IIS URL Rewrite and Application Request Routing if missing, adds an HTTPS binding for the host name with the certificate to the site that owns 443 (or Default Web Site), and forwards only that host name to the portal over a private `http://127.0.0.1:4049` binding with `X-Forwarded-Proto`/`X-Forwarded-For` set and the Host header kept; WebSockets pass through. The portal trusts those headers only from the loopback address. The script can also be run on its own:
+
+```powershell
+C:\inetpub\ess-portal-uat\Enable-EssReverseProxy.ps1 -HostName ess.company.co.ke -CertificateThumbprint '<thumbprint>' -PortalSiteName 'ESS Portal UAT' -PortalAppPoolName EssPortalUat
+```
+
 Running the same or a newer setup file again **updates** the portal: the database script is idempotent, data is kept, and the previous answers (not the passwords) are offered as defaults. Setup logs to `C:\ProgramData\EssPortalSetup\setup-*.log`. If the database password was generated, setup shows it once at the end: store it, because backups and updates need it.
 
 ### Step by step with the scripts

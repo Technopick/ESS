@@ -44,7 +44,7 @@ internal static class Program
             Console.WriteLine();
             Title("Summary");
             Console.WriteLine($"  Environment      {a.Environment}");
-            Console.WriteLine($"  Website          {a.Url}  (HTTPS port {(a.HttpsPort == 0 ? 443 : a.HttpsPort)})");
+            Console.WriteLine($"  Website          {a.Url}  (portal site on HTTPS port {(a.HttpsPort == 0 ? 443 : a.HttpsPort)}{(a.ReverseProxy && a.HttpsPort != 443 ? ", published on 443 through the IIS reverse proxy" : "")})");
             Console.WriteLine($"  HTTPS cert       {(a.CreateSelfSigned ? "new self-signed certificate (testing only)" : a.CertificateThumbprint)}");
             Console.WriteLine($"  Database         PostgreSQL on {a.DbServer}, port {a.DbPort}, database {a.DbName}, user {a.DbUser}");
             Console.WriteLine($"  Install folder   {a.InstallRoot}   data: {a.DataRoot}");
@@ -124,6 +124,12 @@ internal static class Program
         a.HostName = Text("Portal host name (for example ess.company.co.ke)", p.HostName, required: true)!;
         Console.WriteLine("  The standard HTTPS port is 443. Use another port, such as 4048, if 443 is taken on this server.");
         a.HttpsPort = Number("Website HTTPS port", 1, 65535, p.HttpsPort == 0 ? 443 : p.HttpsPort);
+        if (a.HttpsPort != 443)
+        {
+            Console.WriteLine($"  Staff can still use https://{a.HostName} without a port: IIS on port 443 forwards it to port {a.HttpsPort}");
+            Console.WriteLine("  (reverse proxy; setup installs IIS URL Rewrite and Application Request Routing if needed).");
+            a.ReverseProxy = Confirm($"Publish the portal at https://{a.HostName} on port 443 through IIS?", p.ReverseProxy || p.HttpsPort == 0);
+        }
         a.InstallRoot = Text("Install folder", p.InstallRoot ?? (a.Environment == "UAT" ? @"C:\inetpub\ess-portal-uat" : DefaultInstallRoot))!;
         a.DataRoot = Text("Data folder (documents, keys, logs, backups)", p.DataRoot ?? (a.Environment == "UAT" ? @"C:\EssDataUat" : @"C:\EssData"))!;
 
@@ -259,6 +265,7 @@ internal static class Program
         Set("ENVIRONMENT", a.Environment);
         Set("HOST", a.HostName);
         Set("HTTPS_PORT", a.HttpsPort.ToString());
+        Set("REVERSE_PROXY", a.ReverseProxy && a.HttpsPort != 443 ? "1" : null);
         Set("INSTALL_ROOT", a.InstallRoot);
         Set("DATA_ROOT", a.DataRoot);
         Set("SITE", a.Environment == "UAT" ? "ESS Portal UAT" : "ESS Portal");
@@ -380,6 +387,7 @@ internal sealed class Answers
     public string? Environment { get; set; }
     public string? HostName { get; set; }
     public int HttpsPort { get; set; }
+    public bool ReverseProxy { get; set; }
     public string? InstallRoot { get; set; }
     public string? DataRoot { get; set; }
     public string? CertificateThumbprint { get; set; }
@@ -396,7 +404,7 @@ internal sealed class Answers
     public string? SmsProvider { get; set; }
     public string? SmsSenderId { get; set; }
 
-    [System.Text.Json.Serialization.JsonIgnore] public string Url => HttpsPort is 0 or 443 ? $"https://{HostName}" : $"https://{HostName}:{HttpsPort}";
+    [System.Text.Json.Serialization.JsonIgnore] public string Url => HttpsPort is 0 or 443 || ReverseProxy ? $"https://{HostName}" : $"https://{HostName}:{HttpsPort}";
     [System.Text.Json.Serialization.JsonIgnore] public bool CreateSelfSigned { get; set; }
     [System.Text.Json.Serialization.JsonIgnore] public string? DbAdminPassword { get; set; }
     [System.Text.Json.Serialization.JsonIgnore] public string? DbPassword { get; set; }
