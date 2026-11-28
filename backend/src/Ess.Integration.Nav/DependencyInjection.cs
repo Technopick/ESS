@@ -42,6 +42,8 @@ public static class DependencyInjection
         services.AddSingleton<INavPayrollService, NavPayrollAdapter>();
         services.AddSingleton<INavExpenseService, NavExpenseAdapter>();
         services.AddSingleton<INavConnectivityService, NavConnectivityService>();
+        services.AddSingleton<Setup.NavSetupHttp>();
+        services.AddSingleton<Setup.NavSetupAssistant>();
 
         services.AddScoped<IIntegrationQueue, IntegrationQueue>();
         services.AddScoped<INavOperationHandler, LeaveSubmitHandler>();

@@ -87,6 +87,9 @@ If the NAV server is not in the same domain, use **NAV user name and password** 
 
 ## Step 4. Add the NAV connection in the portal
 
+**The easy way:** System administration, NAV connection, **Connect NAV or Business Central**. The assistant asks for the version, server and sign-in, tests them step by step and says in plain words what is wrong (server name not found, port closed, wrong sign-in type, wrong password, instance name). It then lists the companies, reads which pages and codeunits NAV publishes, suggests one for each portal feature, matches field names (for example Supervisor_No for the manager), and saves everything, including the company link, with the first sync. That replaces steps 4 to 7 below; run it again at any time to change the connection. The manual steps stay here for reference.
+
+
 Go to **System administration, NAV connection, Add a NAV connection**:
 
 | Field | Value |

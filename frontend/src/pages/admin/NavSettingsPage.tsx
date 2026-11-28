@@ -9,6 +9,7 @@ import {
 } from '../../api/navSettings'
 import { errorMessage } from '../../api/client'
 import { EmptyState, ErrorState, LoadingState } from '../../components/StateViews'
+import { NavSetupWizard } from './NavSetupWizard'
 
 const allowedAuth: Record<NavPlatform, NavAuthMethod[]> = {
   Nav2013: ['Windows', 'NavUserPassword'],
@@ -183,6 +184,7 @@ function CompanyRow({ company, instances, onToast }: { company: NavCompanyLink; 
 
 export function NavSettingsPage() {
   const [editing, setEditing] = useState<NavInstance | 'new' | null>(null)
+  const [wizard, setWizard] = useState<string | 'new' | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const qc = useQueryClient()
   const data = useQuery({ queryKey: ['nav-settings'], queryFn: navSettingsApi.overview })
@@ -190,13 +192,17 @@ export function NavSettingsPage() {
     <Stack spacing={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Typography variant="h1">NAV connection</Typography>
-        <Button variant="contained" onClick={() => setEditing('new')}>Add a NAV connection</Button>
+        <Stack direction="row" spacing={1}>
+          <Button onClick={() => setEditing('new')}>Add manually</Button>
+          <Button variant="contained" onClick={() => setWizard('new')}>Connect NAV or Business Central</Button>
+        </Stack>
       </Stack>
       <Typography variant="body2" color="text.secondary">
-        The portal talks to NAV only through published web services: OData pages to read and the ESS Portal Gateway codeunit (SOAP) to submit. After saving, use Test connection on the NAV integration page.
+        The portal talks to NAV only through published web services: OData pages to read and the ESS Portal Gateway codeunit (SOAP) to submit.
+        The assistant tests the server and sign-in, lists what NAV publishes and matches it to the portal for you.
       </Typography>
       {data.isLoading ? <LoadingState rows={4} /> : data.isError ? <ErrorState error={data.error} /> : <>
-        {data.data!.instances.length === 0 ? <EmptyState title="No NAV connection yet" /> : data.data!.instances.map((i) => (
+        {data.data!.instances.length === 0 ? <EmptyState title="No NAV connection yet" hint="Click Connect NAV or Business Central to set one up step by step." /> : data.data!.instances.map((i) => (
           <Card key={i.id}><CardContent>
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
               <Box>
@@ -209,7 +215,10 @@ export function NavSettingsPage() {
                 </Stack>
                 <Typography variant="body2" color="text.secondary">{i.soapBaseUrl ?? i.apiBaseUrl ?? 'No address'} · {authNames[i.authMethod]}{i.userName ? ` as ${i.userName}` : ''}{i.hasPassword ? ' · secret stored' : ''}</Typography>
               </Box>
-              {!i.useSimulator && <Button size="small" onClick={() => setEditing(i)}>Edit</Button>}
+              {!i.useSimulator && <Stack direction="row" spacing={1} alignItems="flex-start">
+                <Button size="small" variant="outlined" onClick={() => setWizard(i.id)}>Assistant</Button>
+                <Button size="small" onClick={() => setEditing(i)}>Edit</Button>
+              </Stack>}
             </Stack>
             <Box sx={{ mt: 2 }}><Endpoints instance={i} onToast={setToast} /></Box>
           </CardContent></Card>
@@ -223,6 +232,8 @@ export function NavSettingsPage() {
           </Table></TableContainer>
         </CardContent></Card>
       </>}
+      {wizard && <NavSetupWizard settingsId={wizard === 'new' ? null : wizard} onClose={() => setWizard(null)}
+        onDone={(m) => { setToast(m); qc.invalidateQueries({ queryKey: ['nav-settings'] }) }} />}
       {editing && <InstanceDialog instance={editing} onClose={() => setEditing(null)} onDone={(m) => { setToast(m); qc.invalidateQueries({ queryKey: ['nav-settings'] }) }} />}
       <Snackbar open={!!toast} autoHideDuration={6000} onClose={() => setToast(null)} message={toast} />
     </Stack>
