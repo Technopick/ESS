@@ -125,3 +125,13 @@ The script backs up, shows a maintenance page, applies the idempotent database s
 * NAV health: the NAV integration page, with failed transactions, retry and log export.
 * Certificates: renew the HTTPS certificate before it expires and re-run the install script with the new thumbprint.
 * Patching: Windows updates and the ASP.NET Core 8 Hosting Bundle (monthly security releases) in a maintenance window; the pool recycles daily at 03:00.
+
+## 8. Common errors
+
+| Symptom | Cause and fix |
+|---|---|
+| HTTP 500.19, error 0x80070021, pointing at a `<webSocket>` line in web.config | The web.config in packages up to build 5aa51e1 set `webSocket`, a section IIS locks by default. Install the newer package, or delete that line from `<install folder>\app\web.config`. WebSockets stay on server-wide as long as the WebSocket Protocol feature is enabled. |
+| "This website cannot be started. Another website may be using the same port." | Another site or program holds the port. Re-run setup and choose another HTTPS port (for example 4048), or stop the other site. |
+| Readiness check fails | Open `https://<host>:<port>/health/ready` on the server, and read `<data folder>\logs` and the Windows Application event log (source IIS AspNetCore Module V2). |
+
+**Another reverse proxy in front (Caddy, nginx).** Point it at `https://<host>:<port>` (or a loopback HTTP binding) and pass `X-Forwarded-Proto` and `X-Forwarded-For`. The portal only trusts those headers when the proxy connects from the same machine (127.0.0.1 or ::1); for a proxy on another machine add its address to `ForwardedHeaders:KnownProxies`. Set `App:PublicUrl` to the address users type, so links in emails are right.
