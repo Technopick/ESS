@@ -44,9 +44,9 @@ internal static class Program
             Console.WriteLine();
             Title("Summary");
             Console.WriteLine($"  Environment      {a.Environment}");
-            Console.WriteLine($"  Address          {a.Url}");
+            Console.WriteLine($"  Website          {a.Url}  (HTTPS port {(a.HttpsPort == 0 ? 443 : a.HttpsPort)})");
             Console.WriteLine($"  HTTPS cert       {(a.CreateSelfSigned ? "new self-signed certificate (testing only)" : a.CertificateThumbprint)}");
-            Console.WriteLine($"  Database         {a.DbServer}:{a.DbPort}/{a.DbName} as {a.DbUser}");
+            Console.WriteLine($"  Database         PostgreSQL on {a.DbServer}, port {a.DbPort}, database {a.DbName}, user {a.DbUser}");
             Console.WriteLine($"  Install folder   {a.InstallRoot}   data: {a.DataRoot}");
             Console.WriteLine($"  NAV sign-in      {(string.IsNullOrEmpty(a.ServiceAccount) ? "user name and password (set later in the portal)" : "Windows account " + a.ServiceAccount)}");
             Console.WriteLine($"  E-mail           {(string.IsNullOrEmpty(a.SmtpHost) ? "not configured" : a.SmtpHost)}");
@@ -123,7 +123,7 @@ internal static class Program
         a.Environment = Choose("Is this the live (Production) or test (UAT) server?", new[] { "Production", "UAT" }, p.Environment ?? "Production");
         a.HostName = Text("Portal host name (for example ess.company.co.ke)", p.HostName, required: true)!;
         Console.WriteLine("  The standard HTTPS port is 443. Use another port, such as 4048, if 443 is taken on this server.");
-        a.HttpsPort = Number("HTTPS port", 1, 65535, p.HttpsPort == 0 ? 443 : p.HttpsPort);
+        a.HttpsPort = Number("Website HTTPS port", 1, 65535, p.HttpsPort == 0 ? 443 : p.HttpsPort);
         a.InstallRoot = Text("Install folder", p.InstallRoot ?? (a.Environment == "UAT" ? @"C:\inetpub\ess-portal-uat" : DefaultInstallRoot))!;
         a.DataRoot = Text("Data folder (documents, keys, logs, backups)", p.DataRoot ?? (a.Environment == "UAT" ? @"C:\EssDataUat" : @"C:\EssData"))!;
 
@@ -145,8 +145,18 @@ internal static class Program
         }
 
         Title("3. Database (PostgreSQL 16)");
-        a.DbServer = Text("PostgreSQL server", p.DbServer ?? "localhost")!;
-        a.DbPort = Number("Port", 1, 65535, p.DbPort == 0 ? 5432 : p.DbPort);
+        Console.WriteLine("  This is the database server, not the website. PostgreSQL normally listens on port 5432.");
+        while (true)
+        {
+            a.DbServer = Text("PostgreSQL server", p.DbServer ?? "localhost")!;
+            // An earlier run may have saved the website's port here by mistake; offer the standard one instead.
+            var defPort = p.DbPort == 0 || p.DbPort == a.HttpsPort ? 5432 : p.DbPort;
+            a.DbPort = Number("PostgreSQL port (normally 5432)", 1, 65535, defPort);
+            if (a.DbPort == a.HttpsPort) { Error($"  {a.DbPort} is the website's HTTPS port. Enter PostgreSQL's port (normally 5432)."); continue; }
+            if (CanConnect(a.DbServer, a.DbPort)) break;
+            Error($"  Nothing answers on {a.DbServer}:{a.DbPort}. Check that PostgreSQL is installed and running (Services: postgresql-x64-16) and that the port is right.");
+            if (!Confirm("Try again?", true)) throw new OperationCanceledException();
+        }
         a.DbName = Text("Database name", p.DbName ?? (a.Environment == "UAT" ? "ess_uat" : "ess"))!;
         a.DbUser = Text("Portal database user", p.DbUser ?? "ess_app")!;
         a.DbAdminPassword = Secret("Password of the PostgreSQL 'postgres' administrator", required: true);
@@ -194,6 +204,16 @@ internal static class Program
             }
         }
         return a;
+    }
+
+    private static bool CanConnect(string host, int port)
+    {
+        try
+        {
+            using var client = new System.Net.Sockets.TcpClient();
+            return client.ConnectAsync(host, port).Wait(TimeSpan.FromSeconds(5)) && client.Connected;
+        }
+        catch (Exception) { return false; }
     }
 
     private static List<X509Certificate2> ServerCertificates()
