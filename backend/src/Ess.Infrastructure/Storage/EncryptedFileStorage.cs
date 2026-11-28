@@ -98,3 +98,63 @@ public sealed class ClamAvScanner : IMalwareScanner
         }
     }
 }
+
+/// <summary>
+/// Scans uploads with Microsoft Defender's command-line scanner (MpCmdRun.exe), built into Windows Server 2016 and
+/// later, so a Windows install has a scanner without ClamAV. Each file is written to a private temporary folder under
+/// the storage root, scanned, and deleted. Defender's real-time protection may remove a malicious file as soon as it is
+/// written; a file that disappears is treated as infected.
+/// </summary>
+public sealed class DefenderScanner : IMalwareScanner
+{
+    private readonly string _exe;
+    private readonly string _scanDir;
+    private readonly ILogger<DefenderScanner> _log;
+
+    public DefenderScanner(string exe, string scanDir, ILogger<DefenderScanner> log)
+    {
+        _exe = exe;
+        _scanDir = scanDir;
+        _log = log;
+    }
+
+    public static string? Locate()
+    {
+        if (!OperatingSystem.IsWindows()) return null;
+        var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Windows Defender", "MpCmdRun.exe");
+        return File.Exists(path) ? path : null;
+    }
+
+    public async Task<ScanResult> ScanAsync(byte[] content, CancellationToken ct)
+    {
+        Directory.CreateDirectory(_scanDir);
+        var file = Path.Combine(_scanDir, Guid.NewGuid().ToString("N") + ".bin");
+        try
+        {
+            await File.WriteAllBytesAsync(file, content, ct);
+            var psi = new System.Diagnostics.ProcessStartInfo(_exe)
+            {
+                UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
+            };
+            foreach (var a in new[] { "-Scan", "-ScanType", "3", "-File", file, "-DisableRemediation" }) psi.ArgumentList.Add(a);
+            using var p = System.Diagnostics.Process.Start(psi) ?? throw new IOException("MpCmdRun did not start.");
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(60));
+            var output = p.StandardOutput.ReadToEndAsync(timeout.Token);
+            await p.WaitForExitAsync(timeout.Token);
+            if (p.ExitCode == 0 && File.Exists(file)) return new ScanResult(ScanVerdict.Clean, null);
+            if (p.ExitCode == 2 || !File.Exists(file)) return new ScanResult(ScanVerdict.Infected, "Microsoft Defender found a threat.");
+            _log.LogWarning("Microsoft Defender scan returned {Code}: {Output}", p.ExitCode, await output);
+            return new ScanResult(ScanVerdict.NotScanned, "The virus scanner gave an unexpected answer.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OperationCanceledException or System.ComponentModel.Win32Exception)
+        {
+            _log.LogWarning(ex, "Microsoft Defender scan failed");
+            return new ScanResult(ScanVerdict.NotScanned, "The virus scanner could not be run.");
+        }
+        finally
+        {
+            try { if (File.Exists(file)) File.Delete(file); } catch (IOException) { /* Defender may still hold it; the folder is private */ }
+        }
+    }
+}

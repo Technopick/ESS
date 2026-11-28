@@ -12,26 +12,26 @@ namespace Ess.Integration.Nav.Adapters;
 /// </summary>
 public sealed class NavPayrollAdapter : NavAdapterBase, INavPayrollService
 {
-    private static readonly IReadOnlyDictionary<string, string> PeriodOData = new Dictionary<string, string>
+    internal static readonly IReadOnlyDictionary<string, string> PeriodOData = new Dictionary<string, string>
     { ["Code"] = "Code", ["Name"] = "Name", ["Start"] = "Starting_Date", ["End"] = "Ending_Date", ["PayDate"] = "Pay_Date", ["Closed"] = "Closed" };
-    private static readonly IReadOnlyDictionary<string, string> PeriodBc = new Dictionary<string, string>
+    internal static readonly IReadOnlyDictionary<string, string> PeriodBc = new Dictionary<string, string>
     { ["Code"] = "code", ["Name"] = "name", ["Start"] = "startingDate", ["End"] = "endingDate", ["PayDate"] = "payDate", ["Closed"] = "closed" };
-    private static readonly IReadOnlyDictionary<string, string> HeadOData = new Dictionary<string, string>
+    internal static readonly IReadOnlyDictionary<string, string> HeadOData = new Dictionary<string, string>
     {
         ["EmployeeNo"] = "Employee_No", ["PeriodCode"] = "Payroll_Period", ["Currency"] = "Currency_Code", ["Basic"] = "Basic_Pay",
         ["Gross"] = "Gross_Pay", ["Deductions"] = "Total_Deductions", ["Net"] = "Net_Pay", ["PaymentDate"] = "Payment_Date"
     };
-    private static readonly IReadOnlyDictionary<string, string> HeadBc = new Dictionary<string, string>
+    internal static readonly IReadOnlyDictionary<string, string> HeadBc = new Dictionary<string, string>
     {
         ["EmployeeNo"] = "employeeNumber", ["PeriodCode"] = "payrollPeriod", ["Currency"] = "currencyCode", ["Basic"] = "basicPay",
         ["Gross"] = "grossPay", ["Deductions"] = "totalDeductions", ["Net"] = "netPay", ["PaymentDate"] = "paymentDate"
     };
-    private static readonly IReadOnlyDictionary<string, string> LineOData = new Dictionary<string, string>
+    internal static readonly IReadOnlyDictionary<string, string> LineOData = new Dictionary<string, string>
     {
         ["EmployeeNo"] = "Employee_No", ["PeriodCode"] = "Payroll_Period", ["Code"] = "Code", ["Description"] = "Description",
         ["Group"] = "Type", ["Amount"] = "Amount", ["YTD"] = "YTD_Amount", ["Sort"] = "Line_No"
     };
-    private static readonly IReadOnlyDictionary<string, string> LineBc = new Dictionary<string, string>
+    internal static readonly IReadOnlyDictionary<string, string> LineBc = new Dictionary<string, string>
     {
         ["EmployeeNo"] = "employeeNumber", ["PeriodCode"] = "payrollPeriod", ["Code"] = "code", ["Description"] = "description",
         ["Group"] = "group", ["Amount"] = "amount", ["YTD"] = "yearToDate", ["Sort"] = "lineNo"

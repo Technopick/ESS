@@ -18,4 +18,13 @@ describe('errorMessage', () => {
   it('explains network failures', () => {
     expect(errorMessage(axiosError(undefined))).toMatch(/could not be reached/)
   })
+  it('explains a 405 from IIS WebDAV', () => {
+    expect(errorMessage(axiosError(405, '<html>405</html>'))).toMatch(/WebDAV/)
+  })
+  it('names the status when the answer is not problem details', () => {
+    expect(errorMessage(axiosError(418, '<html></html>'))).toMatch(/HTTP 418/)
+  })
+  it('adds the trace reference to server errors', () => {
+    expect(errorMessage(axiosError(500, { title: 'An unexpected error occurred.', traceId: '00-abc' }))).toBe('An unexpected error occurred. (reference 00-abc)')
+  })
 })

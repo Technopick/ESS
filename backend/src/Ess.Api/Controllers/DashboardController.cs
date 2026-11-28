@@ -8,6 +8,7 @@ using Ess.Domain.Workflow;
 using Ess.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Ess.Api.Controllers;
 
@@ -21,12 +22,14 @@ public sealed class DashboardController : ControllerBase
     private readonly EssDbContext _db;
     private readonly EmployeeContext _me;
     private readonly ICurrentUser _user;
+    private readonly IMemoryCache _cache;
 
-    public DashboardController(EssDbContext db, EmployeeContext me, ICurrentUser user)
+    public DashboardController(EssDbContext db, EmployeeContext me, ICurrentUser user, IMemoryCache cache)
     {
         _db = db;
         _me = me;
         _user = user;
+        _cache = cache;
     }
 
     public sealed record UpcomingLeave(Guid Id, string Reference, string LeaveType, DateOnly StartDate, DateOnly EndDate, decimal Days, string Status);
@@ -109,7 +112,16 @@ public sealed class DashboardController : ControllerBase
     }
 
     /// <summary>Birthdays (day and month only) and work anniversaries in the next 14 days, if the company's privacy settings allow.</summary>
-    private async Task<IReadOnlyList<Celebration>> CelebrationsAsync(Guid companyId, DateOnly today, CancellationToken ct)
+    // The list is the same for everyone in a company and changes once a day, so it is computed once per company every
+    // ten minutes instead of on every dashboard load (with 10,000 staff it was the dashboard's most expensive query).
+    private Task<IReadOnlyList<Celebration>> CelebrationsAsync(Guid companyId, DateOnly today, CancellationToken ct) =>
+        _cache.GetOrCreateAsync(("dashboard.celebrations", companyId, today), entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+            return LoadCelebrationsAsync(companyId, today, ct);
+        })!;
+
+    private async Task<IReadOnlyList<Celebration>> LoadCelebrationsAsync(Guid companyId, DateOnly today, CancellationToken ct)
     {
         var settings = await _db.SystemSettings.AsNoTracking()
             .Where(s => (s.CompanyId == companyId || s.CompanyId == null) && (s.Key == "privacy.showBirthdays" || s.Key == "privacy.showAnniversaries"))
@@ -120,9 +132,14 @@ public sealed class DashboardController : ControllerBase
         var showAnniversaries = Flag("privacy.showAnniversaries", true);
         if (!showBirthdays && !showAnniversaries) return Array.Empty<Celebration>();
 
+        var month = today.Month;
+        var nextMonth = today.Month % 12 + 1;
         var staff = await (from x in _db.Employees.AsNoTracking()
                            join d in _db.Departments on x.DepartmentId equals d.Id into dj from d in dj.DefaultIfEmpty()
                            where x.CompanyId == companyId && x.Status == EmploymentStatus.Active
+                                 // only dates in this month or next can fall in the 14-day window
+                                 && ((x.BirthDate != null && (x.BirthDate.Value.Month == month || x.BirthDate.Value.Month == nextMonth))
+                                     || (x.EmploymentDate != null && (x.EmploymentDate.Value.Month == month || x.EmploymentDate.Value.Month == nextMonth)))
                            select new { Name = x.FirstName + " " + x.LastName, x.BirthDate, x.EmploymentDate, Dept = d != null ? d.Name : null })
             .ToListAsync(ct);
         var list = new List<Celebration>();

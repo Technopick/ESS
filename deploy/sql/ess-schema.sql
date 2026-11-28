@@ -1,4 +1,4 @@
-﻿CREATE TABLE IF NOT EXISTS __ef_migrations_history (
+CREATE TABLE IF NOT EXISTS __ef_migrations_history (
     migration_id character varying(150) NOT NULL,
     product_version character varying(32) NOT NULL,
     CONSTRAINT pk___ef_migrations_history PRIMARY KEY (migration_id)
@@ -2350,6 +2350,32 @@ BEGIN
     IF NOT EXISTS(SELECT 1 FROM __ef_migrations_history WHERE "migration_id" = '20261127071610_Phase5Administration') THEN
     INSERT INTO __ef_migrations_history (migration_id, product_version)
     VALUES ('20261127071610_Phase5Administration', '8.0.11');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM __ef_migrations_history WHERE "migration_id" = '20261127083636_Phase6Performance') THEN
+    CREATE INDEX ix_leave_applications_company_id_submitted_at_utc ON leave_applications (company_id, submitted_at_utc);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM __ef_migrations_history WHERE "migration_id" = '20261127083636_Phase6Performance') THEN
+    CREATE INDEX ix_expense_claims_company_id_submitted_at_utc ON expense_claims (company_id, submitted_at_utc);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM __ef_migrations_history WHERE "migration_id" = '20261127083636_Phase6Performance') THEN
+    INSERT INTO __ef_migrations_history (migration_id, product_version)
+    VALUES ('20261127083636_Phase6Performance', '8.0.11');
     END IF;
 END $EF$;
 COMMIT;

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    One-file 64-bit Windows setup for the ESS portal. It embeds the win-x64 package zip built by Build-EssPackage.ps1
+    and drives the same PowerShell scripts, so there is one install logic. Build:
+      dotnet publish deploy/windows/Setup -c Release -p:PayloadZip=<full path to ess-portal-...-win-x64.zip> -p:Version=1.0.0 -o out
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>EssPortalSetup-x64</AssemblyName>
+    <Product>ESS Portal Setup</Product>
+    <Description>Installs the Employee Self-Service portal on Windows Server and IIS</Description>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(PayloadZip)' != ''">
+    <EmbeddedResource Include="$(PayloadZip)" LogicalName="payload.zip" />
+  </ItemGroup>
+  <Target Name="RequirePayload" BeforeTargets="Build" Condition="'$(PayloadZip)' == '' Or !Exists('$(PayloadZip)')">
+    <Error Text="Pass -p:PayloadZip=&lt;path to ess-portal-*-win-x64.zip&gt; (built by Build-EssPackage.ps1)." />
+  </Target>
+</Project>

@@ -1,10 +1,11 @@
 # Employee Self-Service portal for Dynamics NAV / Business Central
 
-Enterprise ESS portal that keeps Dynamics NAV/BC as the system of record. Built in phases; Phases 1, 2, 3 and 5 are done. Phase 4 (the remaining adapters) waits for access to the customer's NAV.
+Enterprise ESS portal that keeps Dynamics NAV/BC as the system of record. Built in phases; Phases 1, 2, 3, 5 and 6 are done. Phase 4 (the remaining adapters) waits for access to the customer's NAV.
 
 * Architecture: [docs/architecture.md](docs/architecture.md)
 * NAV integration mapping and discovery checklist: [docs/nav-integration-mapping.md](docs/nav-integration-mapping.md)
 * NAV customisations required: [docs/nav-customizations.md](docs/nav-customizations.md)
+* Phase 6: [security test report](docs/phase6-security-test-report.md), [performance test report](docs/performance-test-report.md), [UAT plan](docs/uat-plan.md) and [scripts](docs/uat-test-scripts.md), [DPIA](docs/dpia.md), [retention schedule](docs/retention-schedule.md)
 
 ## What works today (Phases 1, 2, 3 and 5)
 
@@ -24,7 +25,7 @@ Enterprise ESS portal that keeps Dynamics NAV/BC as the system of record. Built 
 * Phase 5 HR portal: employee list with filters (department, location, job title, status, contracts ending, no portal account), employee detail with the live NAV profile, balances and activity (every view audited), refresh from NAV, organisation pages with headcounts, department heads and parent departments kept in the portal for approval routing, leave administration (applications monitor, portal-side leave type rules including gender eligibility, public holidays), HR document library, and announcements with targeting, scheduling and notification.
 * Phase 5 management dashboard: headcount, joiners, leavers and turnover, breakdowns by department, location, status and gender, people on leave, contracts ending, celebrations (respecting privacy settings), 12-month trends, training and request statistics, filtered by period, department and location, with Excel and PDF export.
 * Phase 5 reports: 13 reports (directory, headcount, leave utilisation, leave liability, leave applications, contract expiry, HR requests, attendance, training, document expiry, expense claims, pending approvals, payroll summary) with filters and Excel, PDF and CSV export. Department scope is enforced on every report, every view and export is audited, and the payroll summary shows department totals for closed periods only. A read-only `reporting` schema of views and an `ess_reporting` role make the data ready for Power BI.
-* Phase 5 notifications: templates per event and channel with placeholders and preview, optional SMS through Africa's Talking (opt-in per event, no pay figures allowed), delivery history with retry, contract expiry alerts at 60, 30 and 7 days, and NAV integration log export.
+* Phase 5 notifications: templates per event and channel with placeholders and preview, optional SMS through Mobile Sasa (opt-in per event, no pay figures allowed; Africa's Talking also supported), delivery history with retry, contract expiry alerts at 60, 30 and 7 days, and NAV integration log export.
 * Notifications: in-app (live through SignalR), email and SMS, with a bell in the header.
 * Tests: 87 backend tests (unit, end-to-end against PostgreSQL and the NAV simulator, and API tests), 10 frontend tests.
 
@@ -53,7 +54,17 @@ cd backend && ESS_TEST_DB="Host=localhost;Username=postgres;Password=postgres;Da
 cd frontend && npm test
 ```
 
-Without `ESS_TEST_DB` the end-to-end tests are skipped.
+Without `ESS_TEST_DB` the end-to-end tests are skipped. The security tests (`SecurityTests.cs`) run with the rest and fail the build if a new endpoint lacks a permission.
+
+The 10,000-employee load test is opt-in because seeding takes about a minute:
+
+```bash
+cd backend && ESS_PERF=1 ESS_PERF_REPORT=perf.md ESS_TEST_DB="..." dotnet test --filter PerformanceTests
+```
+
+## Windows Server and IIS (customer target)
+
+`deploy/windows` builds and installs the production package: one IIS site that serves both the API and the React app, an always-running application pool for background jobs, HTTPS, settings and secrets as application-pool environment variables, PostgreSQL set-up, nightly backups and updates with rollback. Follow [docs/deployment-windows-iis.md](docs/deployment-windows-iis.md). GitHub Actions builds the package on every change to `main`.
 
 ## Containers
 
@@ -72,7 +83,7 @@ CREATE ROLE powerbi LOGIN PASSWORD '<from your secret store>' IN ROLE ess_report
 
 ## SMS and PDF settings
 
-* SMS: set `Sms__Provider` to `AfricasTalking` with `Sms__Username`, `Sms__ApiKey` and optionally `Sms__SenderId` (environment variables or a secret store, never in files). `Log` writes messages to the log for testing. No SMS is sent for an event until HR adds an SMS template for it.
+* SMS through Mobile Sasa: set `Sms__Provider` to `MobileSasa`, `Sms__ApiKey` to the API token from the Mobile Sasa portal (starts with `mbs_`) and `Sms__SenderId` to the approved sender name, as environment variables or in a secret store, never in files. Numbers are sent as 2547XXXXXXXX; set `Sms__PhoneFormat` to `Local` for 07XXXXXXXX. `AfricasTalking` (with `Sms__Username`) is also supported, and `Log` writes messages to the log for testing. No SMS is sent for an event until HR adds an SMS template for it.
 * PDF export needs a TrueType font. The Docker image installs DejaVu; on Windows Arial is used. `Reporting__FontPath` and `Reporting__BoldFontPath` point at other fonts.
 
 ## Database migrations
@@ -81,6 +92,7 @@ CREATE ROLE powerbi LOGIN PASSWORD '<from your secret store>' IN ROLE ess_report
 dotnet tool install --global dotnet-ef --version 8.0.11
 cd backend
 dotnet ef migrations script --idempotent -p src/Ess.Infrastructure -s src/Ess.Infrastructure -o ../deploy/sql/ess-schema.sql
+sed -i '1s/^\xEF\xBB\xBF//' ../deploy/sql/ess-schema.sql   # psql on Windows rejects a byte-order mark
 ```
 
 Production applies the idempotent script (or sets `Database__MigrateOnStartup=true` for a controlled first start); tables are never created by hand.

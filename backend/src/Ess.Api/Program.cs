@@ -35,6 +35,7 @@ try
     builder.Host.UseWindowsService();
 
     // ---------- Core services ----------
+    builder.Services.AddMemoryCache();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
     builder.Services.AddScoped<Ess.Api.Auth.TokenService>();
@@ -49,6 +50,7 @@ try
     builder.Services.AddScoped<Ess.Api.Services.ManagementDashboardService>();
     builder.Services.AddScoped<Ess.Api.Services.AnnouncementService>();
     builder.Services.AddScoped<Ess.Api.Services.HrAlertService>();
+    builder.Services.AddScoped<Ess.Api.Services.RetentionService>();
     Ess.Api.Reporting.PortalFontResolver.ConfiguredRegularPath = config["Reporting:FontPath"];
     Ess.Api.Reporting.PortalFontResolver.ConfiguredBoldPath = config["Reporting:BoldFontPath"];
     builder.Services.AddScoped<Ess.Application.Workflow.IWorkflowDocumentHandler, Ess.Api.Workflow.ExpenseWorkflowHandler>();
@@ -151,6 +153,17 @@ try
     // ---------- Health ----------
     builder.Services.AddHealthChecks().AddNpgSql(cs, name: "postgres", tags: new[] { "ready" });
 
+    // Behind a reverse proxy on the same server (IIS ARR, see deploy/windows/Enable-EssReverseProxy.ps1) the request
+    // arrives from loopback over HTTP; trust X-Forwarded-For/-Proto from loopback only (the framework default) plus any
+    // proxies listed in ForwardedHeaders:KnownProxies. X-Forwarded-Host is not trusted: the proxy preserves Host.
+    builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(o =>
+    {
+        o.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+        o.ForwardLimit = 1;
+        foreach (var ip in config.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? Array.Empty<string>())
+            if (System.Net.IPAddress.TryParse(ip, out var addr)) o.KnownProxies.Add(addr);
+    });
+
     var app = builder.Build();
 
     // ---------- Database ----------
@@ -166,6 +179,7 @@ try
     }
 
     // ---------- Pipeline ----------
+    app.UseForwardedHeaders();
     app.UseExceptionHandler();
     app.UseSerilogRequestLogging(o => o.GetLevel = (ctx, _, ex) =>
         ex is not null || ctx.Response.StatusCode >= 500 ? Serilog.Events.LogEventLevel.Error : Serilog.Events.LogEventLevel.Information);
@@ -178,8 +192,29 @@ try
         h["X-Frame-Options"] = "DENY";
         h["Referrer-Policy"] = "no-referrer";
         h["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(self)";
+        if (!ctx.Request.Path.StartsWithSegments("/swagger") && !ctx.Request.Path.StartsWithSegments("/admin/jobs"))
+            h["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' wss:; frame-ancestors 'none'";
         await next();
     });
+    // Single-site hosting (Windows/IIS): when the built frontend is in wwwroot the API serves it too, so IIS needs one site.
+    // Unknown /api, /hubs, /health and /admin/jobs paths still return 404 rather than the app shell.
+    var serveSpa = File.Exists(Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "index.html"));
+    if (serveSpa)
+    {
+        app.UseDefaultFiles();
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            OnPrepareResponse = c =>
+            {
+                var path = c.Context.Request.Path.Value ?? "";
+                c.Context.Response.Headers.CacheControl = path.StartsWith("/assets/", StringComparison.OrdinalIgnoreCase)
+                    ? "public, max-age=31536000, immutable"
+                    : "no-cache";
+            }
+        });
+    }
+    // Routing after static files, so files are served before the app-shell fallback endpoint is chosen.
+    app.UseRouting();
     if (config.GetValue("Swagger:Enabled", !env.IsProduction()))
     {
         app.UseSwagger();
@@ -193,6 +228,10 @@ try
 
     app.MapControllers();
     app.MapHub<NotificationsHub>("/hubs/notifications");
+    if (serveSpa)
+        app.MapFallbackToFile("{*path:regex(^(?!api/|hubs/|health/|admin/jobs|swagger).*$)}", "index.html",
+            new StaticFileOptions { OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = "no-cache" }).AllowAnonymous();
+
     app.MapHealthChecks("/health/live", new() { Predicate = _ => false }).AllowAnonymous();
     app.MapHealthChecks("/health/ready", new() { Predicate = c => c.Tags.Contains("ready") }).AllowAnonymous();
     app.MapHangfireDashboard("/admin/jobs", new DashboardOptions { Authorization = new[] { new HangfireDashboardAuthorization() } });
@@ -210,6 +249,7 @@ try
         jobs.AddOrUpdate<Ess.Api.Services.LeaveService>("leave-nav-status", s => s.MirrorNavStatusesAsync(CancellationToken.None), "*/10 * * * *");
         jobs.AddOrUpdate<Ess.Api.Services.AnnouncementService>("announcements-publish", s => s.NotifyDueAsync(CancellationToken.None), "*/10 * * * *");
         jobs.AddOrUpdate<Ess.Api.Services.HrAlertService>("contracts-expiry", s => s.NotifyContractExpiriesAsync(CancellationToken.None), "15 6 * * *");
+        jobs.AddOrUpdate<Ess.Api.Services.RetentionService>("data-retention", s => s.RunAsync(CancellationToken.None), config["Retention:Cron"] ?? "30 2 * * *");
     }
 
     app.Run();

@@ -28,6 +28,8 @@ const UsersPage = lazy(() => import('./pages/admin/UsersPage').then((m) => ({ de
 const RolesPage = lazy(() => import('./pages/admin/RolesPage').then((m) => ({ default: m.RolesPage })))
 const IntegrationDashboardPage = lazy(() => import('./pages/admin/IntegrationDashboardPage').then((m) => ({ default: m.IntegrationDashboardPage })))
 const WorkflowsPage = lazy(() => import('./pages/admin/WorkflowsPage').then((m) => ({ default: m.WorkflowsPage })))
+const BrandingPage = lazy(() => import('./pages/admin/BrandingPage').then((m) => ({ default: m.BrandingPage })))
+const NavSettingsPage = lazy(() => import('./pages/admin/NavSettingsPage').then((m) => ({ default: m.NavSettingsPage })))
 const NotificationsAdminPage = lazy(() => import('./pages/admin/NotificationsAdminPage').then((m) => ({ default: m.NotificationsAdminPage })))
 const ManagementDashboardPage = lazy(() => import('./pages/ManagementDashboardPage').then((m) => ({ default: m.ManagementDashboardPage })))
 const ReportsPage = lazy(() => import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })))
@@ -93,6 +95,8 @@ export default function App() {
                 <Route path="admin/workflows" element={<RequireAuth permission={Permissions.WorkflowConfigure}><WorkflowsPage /></RequireAuth>} />
                 <Route path="admin/users" element={<RequireAuth permission={Permissions.UsersManage}><UsersPage /></RequireAuth>} />
                 <Route path="admin/roles" element={<RequireAuth permission={Permissions.UsersManage}><RolesPage /></RequireAuth>} />
+                <Route path="admin/branding" element={<RequireAuth permission={Permissions.SettingsManage}><BrandingPage /></RequireAuth>} />
+                <Route path="admin/nav-settings" element={<RequireAuth permission={Permissions.IntegrationConfigure}><NavSettingsPage /></RequireAuth>} />
                 <Route path="admin/integration" element={<RequireAuth permission={Permissions.IntegrationView}><IntegrationDashboardPage /></RequireAuth>} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>

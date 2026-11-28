@@ -985,6 +985,9 @@ namespace Ess.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_expense_claims_company_id_reference");
 
+                    b.HasIndex("CompanyId", "SubmittedAtUtc")
+                        .HasDatabaseName("ix_expense_claims_company_id_submitted_at_utc");
+
                     b.HasIndex("EmployeeId", "Status")
                         .HasDatabaseName("ix_expense_claims_employee_id_status");
 
@@ -2199,6 +2202,9 @@ namespace Ess.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CompanyId", "Status")
                         .HasDatabaseName("ix_leave_applications_company_id_status");
+
+                    b.HasIndex("CompanyId", "SubmittedAtUtc")
+                        .HasDatabaseName("ix_leave_applications_company_id_submitted_at_utc");
 
                     b.HasIndex("EmployeeId", "StartDate", "EndDate")
                         .HasDatabaseName("ix_leave_applications_employee_id_start_date_end_date");

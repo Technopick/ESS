@@ -49,6 +49,8 @@ public sealed class EssApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
         {
             s.RemoveAll<IEmailSender>();
             s.AddSingleton<IEmailSender>(Emails);
+            s.RemoveAll<Ess.Integration.Nav.Setup.NavSetupHttp>();
+            s.AddSingleton<Ess.Integration.Nav.Setup.NavSetupHttp, FakeNavSetupHttp>();
         });
     }
 

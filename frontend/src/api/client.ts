@@ -68,10 +68,17 @@ export interface ProblemDetails {
 /** Human-readable message from an API error (RFC 7807 problem details). */
 export function errorMessage(e: unknown): string {
   if (axios.isAxiosError(e)) {
-    const p = e.response?.data as ProblemDetails | undefined
-    if (p?.errors) return Object.values(p.errors).flat().join(' ')
-    if (p?.detail || p?.title) return p.detail ?? p.title!
     if (!e.response) return 'The server could not be reached. Check your connection and try again.'
+    const { status, data } = e.response
+    const p = data && typeof data === 'object' ? (data as ProblemDetails) : undefined
+    const ref = p?.traceId ? ` (reference ${p.traceId})` : ''
+    if (p?.errors) return Object.values(p.errors).flat().join(' ')
+    if (p?.detail || p?.title) return (p.detail ?? p.title!) + (status >= 500 ? ref : '')
+    // No problem details: the answer came from IIS, a proxy or the network, not from the portal.
+    if (status === 405) return 'The web server refused this request (HTTP 405). On IIS this is usually the WebDAV module: remove it for the portal site or install the latest package.'
+    if (status === 413) return 'The file or request is too large for the web server (HTTP 413).'
+    if (status === 502 || status === 503 || status === 504) return `The portal is not responding (HTTP ${status}). Try again in a minute; if it persists, check that the site is running.`
+    return `The server answered HTTP ${status}${e.response.statusText ? ' ' + e.response.statusText : ''}. Please try again; if it persists, give this to your administrator.${ref}`
   }
   return 'Something went wrong. Please try again.'
 }

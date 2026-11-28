@@ -6,7 +6,9 @@
 
   <ItemGroup>
     <PackageReference Include="EFCore.NamingConventions" Version="8.0.3" />
-    <PackageReference Include="MailKit" Version="4.9.0" />
+    <PackageReference Include="MailKit" Version="4.18.2" />
+    <!-- Pinned above vulnerable transitive versions (Phase 6 dependency scan). -->
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.5" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

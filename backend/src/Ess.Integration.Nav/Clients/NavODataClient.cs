@@ -15,7 +15,7 @@ public sealed class NavODataClient
 
     public NavODataClient(NavTransport transport) => _transport = transport;
 
-    public sealed record Query(string? Filter = null, string? OrderBy = null, int? Top = null, string? Select = null, string? Expand = null);
+    public sealed record Query(string? Filter = null, string? OrderBy = null, int? Top = null, string? Select = null, string? Expand = null, int? Skip = null);
 
     public sealed record ODataPage(IReadOnlyList<JsonElement> Rows, string? NextLink);
 
@@ -85,6 +85,7 @@ public sealed class NavODataClient
         if (protocol == NavProtocol.OData && ctx.Profile.ODataVersion == "v3") parts.Add("$format=json");
         if (q.Filter is not null) parts.Add("$filter=" + Uri.EscapeDataString(q.Filter));
         if (q.OrderBy is not null) parts.Add("$orderby=" + Uri.EscapeDataString(q.OrderBy));
+        if (q.Skip is not null and > 0) parts.Add("$skip=" + q.Skip);
         if (q.Top is not null) parts.Add("$top=" + q.Top);
         if (q.Select is not null) parts.Add("$select=" + Uri.EscapeDataString(q.Select));
         if (q.Expand is not null) parts.Add("$expand=" + Uri.EscapeDataString(q.Expand));

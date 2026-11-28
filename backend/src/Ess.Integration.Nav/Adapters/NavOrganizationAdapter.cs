@@ -9,13 +9,13 @@ namespace Ess.Integration.Nav.Adapters;
 public sealed class NavOrganizationAdapter : NavAdapterBase, INavOrganizationService
 {
     // Departments default to Dimension Values of Global Dimension 1; positions to an HR add-on table; locations to Dimension 2.
-    private static readonly IReadOnlyDictionary<string, string> RefOData = new Dictionary<string, string>
+    internal static readonly IReadOnlyDictionary<string, string> RefOData = new Dictionary<string, string>
     { ["Code"] = "Code", ["Name"] = "Name", ["ParentCode"] = "Parent_Code", ["LastModified"] = "Last_Modified_Date_Time" };
-    private static readonly IReadOnlyDictionary<string, string> RefBc = new Dictionary<string, string>
+    internal static readonly IReadOnlyDictionary<string, string> RefBc = new Dictionary<string, string>
     { ["Code"] = "code", ["Name"] = "displayName", ["ParentCode"] = "parentCode", ["LastModified"] = "lastModifiedDateTime" };
-    private static readonly IReadOnlyDictionary<string, string> CalOData = new Dictionary<string, string>
+    internal static readonly IReadOnlyDictionary<string, string> CalOData = new Dictionary<string, string>
     { ["Date"] = "Date", ["Nonworking"] = "Nonworking", ["Description"] = "Description" };
-    private static readonly IReadOnlyDictionary<string, string> CalBc = new Dictionary<string, string>
+    internal static readonly IReadOnlyDictionary<string, string> CalBc = new Dictionary<string, string>
     { ["Date"] = "date", ["Nonworking"] = "nonworking", ["Description"] = "description" };
 
     public NavOrganizationAdapter(NavConnectionManager c, NavODataClient o, NavSoapClient s, ILogger<NavOrganizationAdapter> log) : base(c, o, s, log) { }

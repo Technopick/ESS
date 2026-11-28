@@ -35,42 +35,49 @@ public sealed class NavAuthenticationManager : IDisposable
     {
         var s = ctx.Settings;
         var key = $"{s.Id}:{s.ModifiedAtUtc?.Ticks ?? s.CreatedAtUtc.Ticks}";
-        return _clients.GetOrAdd(key, _ =>
+        return _clients.GetOrAdd(key, _ => CreateClient(ctx));
+    }
+
+    /// <summary>
+    /// A new, uncached client for one-off calls such as the connection assistant's checks, where the settings are not saved yet.
+    /// The caller disposes it.
+    /// </summary>
+    public HttpClient CreateClient(NavConnectionContext ctx)
+    {
+        var s = ctx.Settings;
+        if (s.UseSimulator)
         {
-            if (s.UseSimulator)
+            // NavConnectionManager has already refused the simulator outside allowed environments.
+            if (_simulator is null) throw new NavConfigurationException("The NAV simulator is not registered in this environment.");
+            return new HttpClient(_simulator, disposeHandler: false) { Timeout = TimeSpan.FromSeconds(30) };
+        }
+        var handler = new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            MaxConnectionsPerServer = Math.Max(1, s.MaxConcurrency),
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+            PreAuthenticate = true
+        };
+        if (!s.ValidateServerCertificate)
+        {
+            // Only for self-signed certificates on internal NAV servers; the admin screen warns about it.
+            handler.SslOptions.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+            _log.LogWarning("TLS certificate validation is disabled for NAV instance {Instance}", s.Name);
+        }
+        if (s.AuthMethod == NavAuthMethod.Windows)
+        {
+            var cred = new NetworkCredential(s.UserName, ctx.Password, s.Domain);
+            var cache = new CredentialCache();
+            foreach (var baseUrl in new[] { s.SoapBaseUrl, s.ODataBaseUrl, s.ApiBaseUrl }.Where(u => !string.IsNullOrWhiteSpace(u)))
             {
-                // NavConnectionManager has already refused the simulator outside allowed environments.
-                if (_simulator is null) throw new NavConfigurationException("The NAV simulator is not registered in this environment.");
-                return new HttpClient(_simulator, disposeHandler: false) { Timeout = TimeSpan.FromSeconds(30) };
+                var uri = new Uri(baseUrl!);
+                var root = new Uri(uri.GetLeftPart(UriPartial.Authority));
+                cache.Add(root, "Negotiate", cred);
+                cache.Add(root, "NTLM", cred);
             }
-            var handler = new SocketsHttpHandler
-            {
-                PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-                MaxConnectionsPerServer = Math.Max(1, s.MaxConcurrency),
-                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-                PreAuthenticate = true
-            };
-            if (!s.ValidateServerCertificate)
-            {
-                // Only for self-signed certificates on internal NAV servers; the admin screen warns about it.
-                handler.SslOptions.RemoteCertificateValidationCallback = (_, _, _, _) => true;
-                _log.LogWarning("TLS certificate validation is disabled for NAV instance {Instance}", s.Name);
-            }
-            if (s.AuthMethod == NavAuthMethod.Windows)
-            {
-                var cred = new NetworkCredential(s.UserName, ctx.Password, s.Domain);
-                var cache = new CredentialCache();
-                foreach (var baseUrl in new[] { s.SoapBaseUrl, s.ODataBaseUrl, s.ApiBaseUrl }.Where(u => !string.IsNullOrWhiteSpace(u)))
-                {
-                    var uri = new Uri(baseUrl!);
-                    var root = new Uri(uri.GetLeftPart(UriPartial.Authority));
-                    cache.Add(root, "Negotiate", cred);
-                    cache.Add(root, "NTLM", cred);
-                }
-                handler.Credentials = string.IsNullOrEmpty(s.UserName) ? CredentialCache.DefaultNetworkCredentials : cache;
-            }
-            return new HttpClient(handler, disposeHandler: true) { Timeout = TimeSpan.FromSeconds(Math.Clamp(s.TimeoutSeconds, 5, 600)) };
-        });
+            handler.Credentials = string.IsNullOrEmpty(s.UserName) ? CredentialCache.DefaultNetworkCredentials : cache;
+        }
+        return new HttpClient(handler, disposeHandler: true) { Timeout = TimeSpan.FromSeconds(Math.Clamp(s.TimeoutSeconds, 5, 600)) };
     }
 
     /// <summary>Adds the Authorization header (Basic or Bearer) to a request. Windows auth is handled by the handler.</summary>

@@ -6,6 +6,8 @@ Every NAV capability the portal uses has a **logical endpoint name**. Each NAV i
 
 Legend for "Standard NAV": **Yes** = exists in a standard NAV/BC database; **Partial** = exists but lacks what the portal needs; **No** = needs an add-on or the ESS customisation in `nav-customizations.md`.
 
+
+**Customer answers (27 November 2026):** NAV 2016, deployed on Windows/IIS. HR and payroll use standard NAV, with extensions where they apply and custom tables where needed. So Employee, Cause of Absence and Employee Absence come from standard tables, while leave applications, balances and payroll periods and lines are expected in custom tables. Their names and fields are confirmed in the discovery workshop, and each one is mapped through the ESS pages and the field map without code changes.
 ## 1. Discovery checklist (run against the customer's NAV)
 
 1. Record the version and build (Help → About, or `Get-NAVServerInstance`), the localisation, and installed add-ons (Object Designer filtered on ID ranges 50000–99999 and partner ranges).

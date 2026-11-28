@@ -21,12 +21,14 @@ public sealed class NavExpenseAdapter : NavAdapterBase, INavExpenseService
             { lineNo = l.LineNo, expenseCode = l.ExpenseCode, date = l.Date.ToString("yyyy-MM-dd"), description = l.Description, amount = l.Amount, currency = l.Currency }));
             if (IsSoap(ctx, "Expense.Submit"))
             {
+                // NAV 2013 to 2018 (C/AL) read the lines as XML; BC (AL) reads JSON.
+                var lines = ctx.Profile.StructuredParametersAsXml ? ("linesXml", (object?)LinesXml(claim)) : ("linesJson", (object?)linesJson);
                 var r = await Soap.InvokeCodeunitAsync(ctx, "Expense.Submit", new (string, object?)[]
                 {
                     ("externalRef", claim.IdempotencyKey), ("portalRef", claim.PortalReference), ("employeeNo", claim.EmployeeNo),
                     ("purpose", claim.Purpose), ("currencyCode", claim.Currency), ("projectCode", claim.ProjectCode ?? ""),
                     ("costCentreCode", claim.CostCentreCode ?? ""), ("preApproved", claim.PreApproved), ("approvedBy", claim.ApprovedBy ?? ""),
-                    ("linesJson", linesJson)
+                    lines
                 }, true, ct);
                 return r.Success ? NavResult<NavSubmissionReceipt>.Ok(ReceiptFrom(r.Value!.ReturnValue)) : NavResult<NavSubmissionReceipt>.Fail(r.Error!);
             }
@@ -38,6 +40,19 @@ public sealed class NavExpenseAdapter : NavAdapterBase, INavExpenseService
             }, claim.IdempotencyKey, ct);
             return p.Success ? NavResult<NavSubmissionReceipt>.Ok(ReceiptFrom(Str(p.Value, "documentNumber"), Str(p.Value, "status"))) : NavResult<NavSubmissionReceipt>.Fail(p.Error!);
         }, ct);
+
+    /// <summary>
+    /// Expense lines for C/AL: &lt;Lines&gt;&lt;Line lineNo="10" expenseCode=".." date="yyyy-MM-dd" amount="1.00" currency=".."&gt;description&lt;/Line&gt;&lt;/Lines&gt;.
+    /// Numbers and dates are culture-invariant so the NAV server's regional settings do not matter.
+    /// </summary>
+    public static string LinesXml(NavExpenseClaimSubmission claim) =>
+        new System.Xml.Linq.XElement("Lines", claim.Lines.Select(l => new System.Xml.Linq.XElement("Line",
+            new System.Xml.Linq.XAttribute("lineNo", l.LineNo),
+            new System.Xml.Linq.XAttribute("expenseCode", l.ExpenseCode),
+            new System.Xml.Linq.XAttribute("date", l.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)),
+            new System.Xml.Linq.XAttribute("amount", l.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            new System.Xml.Linq.XAttribute("currency", l.Currency ?? ""),
+            l.Description))).ToString(System.Xml.Linq.SaveOptions.DisableFormatting);
 
     public Task<NavResult<NavDocumentStatus?>> GetStatusAsync(Guid companyId, string navDocumentNo, CancellationToken ct) =>
         RunAsync(companyId, "Expense.Status", async ctx =>

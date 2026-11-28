@@ -131,7 +131,7 @@ This avoids two competing approval processes. The owner per document type is dec
 * **Logs**: NAV request/response bodies are masked (passwords, tokens, ID/KRA PIN/NSSF/SHIF numbers, bank accounts, pay amounts, birth dates) before storage.
 * **Transport**: HTTPS with HSTS, security headers, CORS allow-list, rate limiting (10/min on auth endpoints, 300/min per user overall).
 * **Audit**: `audit_logs` records sign-ins, payslip downloads, approvals, integration retries and configuration changes with user, IP and correlation id.
-* **Kenya Data Protection Act 2019**: data minimisation (payroll not stored by default), purpose-limited access by role, encryption at rest for sensitive fields, audit trails, retention settings per document category, and support for data-subject access requests through HR. A DPIA template and retention schedule are Phase 6 deliverables.
+* **Kenya Data Protection Act 2019**: data minimisation (payroll not stored by default), purpose-limited access by role, encryption at rest for sensitive fields, audit trails, retention settings per document category, and support for data-subject access requests through HR. See the [DPIA](dpia.md) and the [retention schedule](retention-schedule.md); a nightly `data-retention` job enforces the automatic periods.
 
 ## 9. Performance and scale (100 to 10,000+ employees)
 
@@ -146,7 +146,7 @@ This avoids two competing approval processes. The owner per document type is dec
 * **Windows Server**: IIS (ASP.NET Core Module) for the API and static frontend, or the API as a Windows Service (`UseWindowsService`). PostgreSQL on Windows or a separate server.
 * **Linux / containers**: `docker-compose.yml` (PostgreSQL, API, nginx serving the SPA and proxying `/api` and `/hubs`).
 * Environments: `appsettings.{Development,Testing,UAT,Production}.json`; secrets only from environment variables or a secret store.
-* Full deployment scripts, backups and CI/CD are Phase 7.
+* Windows/IIS package (the customer's target): `deploy/windows` and [deployment-windows-iis.md](deployment-windows-iis.md). The API serves the React app, so IIS needs one site; data-protection keys are persisted and protected with a certificate (or machine DPAPI); backups cover the database, documents and keys. CI (GitHub Actions) tests both halves and builds the package.
 
 ## 10a. Reporting, dashboard and notifications (Phase 5)
 
@@ -168,13 +168,13 @@ This avoids two competing approval processes. The owner per document type is dec
 | 4 | Remaining NAV adapters against the real NAV, approval status sync | Engine done; adapters need the customer's objects |
 | 5 | HR portal, management dashboard, reports, notifications | Done against the NAV simulator; SMS needs the customer's gateway account |
 | 6 | Security, performance and UAT testing | Not started |
-| 7 | Production deployment package | Docker files only |
+| 7 | Production deployment package | Windows/IIS package, backups and CI done; final hardening after UAT |
 
 ## 12. Open questions for the customer
 
-1. NAV/BC version and build, and whether HR/leave/payroll is standard, a Kenyan payroll add-on, or custom tables (decides every adapter's mapping).
+1. ~~NAV/BC version~~ NAV 2016, standard HR with extensions and custom tables where needed (answered 27 November 2026). Still needed: the custom table names for leave and payroll, and the build number.
 2. Which document types already have approval workflows in NAV (decides workflow ownership).
 3. How departments and positions are modelled (Global Dimension 1, HR add-on tables, or Employee fields).
 4. Whether NAV can render the payslip report as PDF via a codeunit, or the portal should render it.
 5. Authentication on the NAV service tier (Windows, NavUserPassword, or OAuth for BC online), and whether a dedicated service user with a restricted permission set can be created.
-6. Hosting target (Windows/IIS on-premises or containers) and whether the NAV server is reachable from it.
+6. ~~Hosting target~~ Windows/IIS (answered). Still needed: whether the NAV server is reachable from the portal server, and whether the portal faces the internet.
